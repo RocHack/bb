@@ -10,6 +10,10 @@ login_path='/webapps/login/index'
 frameset_path='/webapps/portal/frameset.jsp'
 main_path='/webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_23_1'
 
+sequoia_token_path='/webapps/bb-ecard-sso-bb_bb60/token.jsp'
+sequoia_auth_url='https://ecard.sequoiars.com/eCardServices/AuthenticationHandler.ashx'
+card_balance_url='https://ecard.sequoiars.com/eCardServices/eCardServices.svc/WebHttp/GetAccountHolderInformationForCurrentUser'
+
 cookie_jar=~/.bbsession
 
 # login info will be filled from ~/.netrc or by prompting the user
@@ -18,8 +22,15 @@ password=
 authenticated=
 
 bb_request() {
-	#echo curl -s -b $cookie_jar -c $cookie_jar $bb_url$@ >>bb.log
-	curl -s -b $cookie_jar -c $cookie_jar $bb_url$@ 2>&-
+	# Allow path or full url
+	if [[ ${1:0:1} == "/" ]]; then
+		url=$bb_url$@
+	else
+		url=$@
+	fi
+	check_cookies
+	curl -s -b $cookie_jar -c $cookie_jar $url 2>&-
+	echo curl -s -b $cookie_jar -c $cookie_jar $url >>bb.log
 }
 
 # check if a file is accessible to other users
@@ -57,7 +68,7 @@ check_cookies() {
 		# create the cookie jar
 		touch $cookie_jar
 		chmod 600 $cookie_jar
-		return 1
+		false
 	fi
 }
 
@@ -135,8 +146,9 @@ bb_help() {
 	echo 'Usage: bb <command> <args>'
 	echo 'Commands:'
 	echo '    submit     Submit an assignment for a course'
-	echo '    courses    List your courses.'
-	echo '    help       Get this help message.'
+	echo '    courses    List your courses'
+	echo '    balance    Get your declining/Uros balance'
+	echo '    help       Get this help message'
 }
 
 invalid_command() {
@@ -275,7 +287,7 @@ get_assignments() {
 
 	# Go to the Course Materials page
 	local course_materials_path=`bb_request $course_path -L | \
-		sed -n '/Course Material/ s/.*<a href="http:\/\/[^/]*\([^"]*\)".*/\1/p'`
+		sed -n '/Course Material/ s/.*<a href="\([^"]*\)".*/\1/p'`
 
 	get_assignments2 $course_materials_path
 }
@@ -394,6 +406,51 @@ bb_submit() {
 	upload_assignment $assignment_upload_path $submission
 }
 
+# command: balance
+
+# Establish a session with Sequoia Retail Systems through Blackboard
+authenticate_sequoia() {
+	authenticate
+	auth_token=`bb_request $sequoia_token_path | \
+		sed -n 's/.*name="AUTHENTICATIONTOKEN" value="\([^"]*\).*/\1/p'`
+
+	resp=`bb_request $sequoia_auth_url -d "AUTHENTICATIONTOKEN=$auth_token"` 
+	if [[ $resp == 'No destination url posted.' ]]; then
+		echo Logged in to Sequoia.
+		true
+	else
+		echo Unable to log in to Sequoia. >&2
+		false
+	fi
+}
+
+# Get account balances
+bb_balance() {
+	if [[ $# -gt 2 ]]; then
+		echo Usage: bb balance [-d] [-u] >&2
+		return 1
+	fi
+	opt="$2"
+
+	local balances
+	# Try to re-use the session
+	balances=`bb_request $card_balance_url -d '{}' -f` || balances=
+	if [[ -z $balances ]]; then
+		authenticate_sequoia || return 1
+		balances=`bb_request $card_balance_url -d '{}' -f`
+	fi
+
+	part1=${balances##*BalanceInDollars\":}
+	part2=${balances#*BalanceInDollars\":}
+	declining=${part1%%,*}
+	uros=${part2%%,*}
+
+	if [[ $opt == '-d' ]]; then echo $declining
+	elif [[ $opt == '-u' ]]; then echo $uros
+	else echo $declining $uros
+	fi
+}
+
 # command: help
 
 usage_help() {
@@ -411,6 +468,7 @@ fi
 case "$1" in
 	submit) bb_submit $@;;
 	courses) bb_courses;;
+	balance) bb_balance $@;;
 	help) bb_help $@;;
 	*) invalid_command $@;;
 esac
