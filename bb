@@ -5,16 +5,16 @@
 
 # httpauth_url='https://my.rochester.edu/bbcswebdav/'
 bb_server='my.rochester.edu'
-bb_url="https://$bb_server/"
-login_path='webapps/login/'
-frameset_path='webapps/portal/frameset.jsp'
-main_path='webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_23_1'
+bb_url="https://$bb_server"
+login_path='/webapps/login/index'
+frameset_path='/webapps/portal/frameset.jsp'
+main_path='/webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_23_1'
 
 cookie_jar=~/.bbsession
 
 # login info will be filled from ~/.netrc or by prompting the user
-user_id=''
-password=''
+user_id=
+password=
 authenticated=
 
 bb_request() {
@@ -24,7 +24,7 @@ bb_request() {
 
 # check if a file is accessible to other users
 insecure_file() {
-	perms=$(stat $1 --format %a)
+	perms=`stat $1 --format %a`
 	test ${perms:1} -ne '00'
 }
 
@@ -39,9 +39,9 @@ parse_netrc() {
 		echo 'Warning: .netrc has insecure permissions.' >&2
 	fi
 
-	cred=$(sed -n "/machine $bb_server/,/machine /p" $netrc)
-	user_id=$(sed -n 's/.*login \([^ ]*\).*/\1/p' <<< $cred)
-	password=$(sed -n 's/.*password \([^ ]*\).*/\1/p' <<< $cred)
+	cred=`sed -n "/machine $bb_server/,/machine /p" $netrc`
+	user_id=`sed -n 's/.*login \([^ ]*\).*/\1/p' <<< $cred`
+	password=`sed -n 's/.*password \([^ ]*\).*/\1/p' <<< $cred`
 }
 
 # Check the cookie file and create it if necessary
@@ -61,7 +61,7 @@ check_cookies() {
 	fi
 }
 
-# check if the current session is valid
+# Check if the current session is valid
 check_session() {
 	[[ $authenticated ]] && return 0
 	check_cookies || return 1
@@ -83,7 +83,11 @@ check_session() {
 # Open a session with the blackboard server.
 # This should be called before any logged-in blackboard interaction
 authenticate() {
-	check_session && return 0
+	# Check if the session cookies still work.
+	if check_session; then
+		echo Logged in.
+		return 0
+	fi
 
 	# load credentials from file
 	parse_netrc
@@ -92,6 +96,7 @@ authenticate() {
 	do
 		login
 	done
+	echo Logged in as $user_id.
 }
 
 # Log in and validate the session.
@@ -115,8 +120,10 @@ login() {
 	enc_pass=$(echo -n $password | openssl base64)
 	#echo Logging in...
 	bb_request $login_path -d "user_id=$user_id&encoded_pw=$enc_pass" >&-
-	check_session && echo Logged in as $user_id.
+	check_session
 }
+
+# main command
 
 usage_main() {
 	exec >/dev/stderr
@@ -164,40 +171,227 @@ bb_courses() {
 	done
 }
 
-bb_submit() {
-	[[ $# -lt 4 ]] && usage_submit
-	course="$2"
-	assignment="$3"
-	submission="$4"
+# Check that a file exists, is readable and nonempty
+check_submission_file() {
+	if [[ -z $1 ]]; then
+		false
+	elif [[ ! -e $1 ]]; then 
+		echo "File '$1' does not exist." >&2
+	elif [[ ! -f $1 ]]; then
+		echo "'$1' is not a file." >&2
+	elif [[ ! -r $1 ]]; then
+		echo "File '$1' is not readable." >&2
+	elif [[ $(du -b $1 | cut -f 1) -lt 1 ]]; then
+		echo "File '$1' is empty." >&2
+	else
+		# File is okay
+		return 0
+	fi
+	return 1
+}
 
-	echo Not implemented. >&2
-	exit 1
+# Get a course matching a string,
+# prompting the user to choose between multiple results.
+# Writes the result to variable COURSE in the form "path name title"
+get_course() {
+	local search="$1"
+	local num_matches=0
+	local courses=
+	local course=
 
-	authenticate
-
-	# Get the course list
-	get_courses | while read course_path course_name course_title 
-	do
-		echo $course_title
-		# Make sure course_path is not just '/'
-	done
-
-	# If the user specified a submission file, make sure it is nonempty.
+	# Ignore courses with no path (can't submit items to those)
+	local all_courses=`get_courses | sed '/^\/ /d'`
 
 	# If the user specified no course, let them pick one now.
+	if [[ -z $search ]]; then
+		# List all courses
+		courses="$all_courses"
+	else
+		# Find courses matching the search string
+		courses=`grep -i "$search" <<< "$all_courses"`
 
-	# Otherwise find a course matching the command line argument.
-		# If >1 course matches, let the user pick one from the matches.
-		# If 0 courses match, let the user pick from all their courses.
+		if [[ -z $courses ]]; then
+			# If 0 courses match, let the user pick from all their courses.
+			echo "Found no courses matching '$1'"
+		else
+			# If 1 course matches, use that one.
+			num_matches=`wc -l <<< "$courses"` 
+			if [[ $num_matches -eq 1 ]]; then
+				course="$courses"
+				# Trim off path
+				echo Found ${course#* }.
+			else
+				# If >1 courses match, let the user pick from the matches.
+				echo Found $num_matches courses.
+			fi
+		fi
+	fi
 
-	# Proceed in a similar fashion for choosing the assignment.
-	# Look for assignments in all the Course Materials pages.
+	# Split strings at newline for select menu
+	OIFS=$IFS
+	IFS=$'\n'
 
-	# If the user specified no submission file, prompt for it now.
-	# Check that the submission file exists and is nonempty.
+	# Set the prompt string
+	OPS3=$PS3
+	PS3='Choose a course: '
+
+	if [[ $num_matches -ne 1 ]]; then
+		# Don't show the course page in the select menu
+		select course in `sed 's/^[^ ]* //' <<<"$courses"`; do
+			if [[ -n $course ]]; then
+				# Put back the course path
+				course=`grep -F "$course" <<<"$courses"`
+				break
+			fi
+		done
+	fi
+
+	# Restore environment.
+	IFS=$OIFS
+	PS3=$OPS3
+
+	# return result
+	COURSE="$course"
+}
+
+# Get assignments from a Course Materials page or subpage.
+get_assignments2() {
+	local course_materials=`bb_request $1`
+
+	# Follow links like "Laboratory Reports" and "Projects"
+	echo "$course_materials" | sed -n 's/.*<a href="\(\/[^"]*listContent\.jsp?course_id=[0-9_]*[^"]*\)">.*/\1/p' | \
+	while read assignment_path; do
+		get_assignments2 $assignment_path
+	done
+
+	# Print the assignments on this page
+	echo "$course_materials" | sed -n 's/.*<a href="\([a-z/]*uploadAssignment[^"]*\)"><[^>]*>\([^<]*\).*/\1 \2/p'
+}
+
+# List titles of all the assignments for a given course
+# Format per line: "assignment_upload_path assignment_title"
+get_assignments() {
+	local course_path="$1"
+
+	# Go to the Course Materials page
+	local course_materials_path=`bb_request $course_path -L | \
+		sed -n '/Course Material/ s/.*<a href="http:\/\/[^/]*\([^"]*\)".*/\1/p'`
+
+	get_assignments2 $course_materials_path
+}
+
+# Get an assignment for a given course path, prompting the user if necessary.
+get_assignment() {
+	local course_path="$1"
+	local search="$2"
+	local num_matches=0
+	local all_assignments=`get_assignments $course_path`
+	local assignments=
+	local assignment=
+
+	# If the user did not specify an assignment, let them choose now.
+	if [[ -z $search ]]; then
+		# List all assignments.
+		assignments="$all_assignments"
+	else
+		# Find assignments matching the search string
+		assignments=`grep -i "$search" <<< "$all_assignments"`
+
+		if [[ -z $assignments ]]; then
+			echo "Found no assignments matching '$2'"
+			# If 0 assignments match, let the user pick from the whole list
+			assignments="$all_assignments"
+		else
+			# If 1 assignment matches, use that one.
+			num_matches=`wc -l <<< "$assignments"` 
+			if [[ $num_matches -eq 1 ]]; then
+				assignment="$assignments"
+				# Trim off path
+				echo Found ${assignment#* }.
+			else
+				# If >1 assignments match, let the user pick from the matches.
+				echo Found $num_matches assignments.
+			fi
+		fi
+	fi
+
+	# Split strings at newline for select menu
+	OIFS=$IFS
+	IFS=$'\n'
+
+	# Set the prompt string
+	OPS3=$PS3
+	PS3='Choose an assignment: '
+
+	if [[ $num_matches -ne 1 ]]; then
+		# Don't show the assignment path in the select menu
+		select assignment in `sed 's/^[^ ]* //' <<<"$assignments"`; do
+			if [[ -n $assignment ]]; then
+				# Put back the assignment path
+				assignment=`grep -F "$assignment" <<<"$assignments"`
+				break
+			fi
+		done
+	fi
+
+	# Restore environment.
+	IFS=$OIFS
+	PS3=$OPS3
+
+	# Return result.
+	ASSIGNMENT="$assignment"
+}
+
+upload_assignment() {
+	upload_form_path="$1"
+	submission="$2"
+
+	echo Submit $submission to $1
+	echo Not implemented! >&2
 
 	# Embed the submission file in the form data and submit it.
 	# Check for a positive result.
+}
+
+bb_submit() {
+	local course=
+	local assignment=
+	local submission=
+	local opt=start
+
+	# Process arguments
+	for arg; do
+		if [[ $opt == start ]]; then opt=
+		elif [[ $opt == submission ]]; then submission="$arg"; opt=
+		elif [[ $arg == '-f' ]]; then opt='submission'
+		elif [[ -z $course ]]; then course="$arg"
+		elif [[ -z $assignment ]]; then assignment="$arg"
+		fi
+	done
+
+	# If the user specified a submission file, check it
+	if [[ -n $submission ]]; then
+		check_submission_file $submission || exit 1
+	fi
+
+	# Establish session
+	authenticate
+
+	# Select the course interactively and get the course path
+	get_course $course
+	course_path=${COURSE%% *}
+
+	# Select the assignment (interactive) and get the assignment upload path
+	get_assignment $course_path $assignment
+	assignment_upload_path=${ASSIGNMENT%% *}
+
+	# Prompt for submission file if it was not specified
+	until check_submission_file $submission; do
+		echo Enter the file name of your submission:
+		read -e submission
+	done
+
+	upload_assignment $assignment_upload_path $submission
 }
 
 # command: help
