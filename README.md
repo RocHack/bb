@@ -1,7 +1,7 @@
 bb
 ==
 
-*bb* is a command-line tool for interacting with a Blackboard Learn
+**bb** is a command-line tool for interacting with a Blackboard Learn
 installation. With bb you can submit labs and projects from the comfort of your
 terminal. Currently it can be used with http://my.rochester.edu/ but it could
 have support added for other schools' installations.
