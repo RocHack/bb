@@ -418,7 +418,7 @@ authenticate_sequoia() {
 	auth_token=`bb_request $sequoia_token_path | \
 		sed -n 's/.*name="AUTHENTICATIONTOKEN" value="\([^"]*\).*/\1/p'`
 
-	resp=`bb_request $sequoia_auth_url -d "AUTHENTICATIONTOKEN=$auth_token"` 
+	resp=`bb_request $sequoia_auth_url -F "AUTHENTICATIONTOKEN=$auth_token"`
 	if [[ $resp == 'No destination url posted.' ]]; then
 		echo Logged in to Sequoia.
 		true
@@ -436,8 +436,12 @@ bb_balance() {
 	fi
 	opt="$2"
 
-	local balances
+	check_cookies
+
+	bb_request $card_balance_url -i -d '{}' -f
+
 	# Try to re-use the session
+	local balances
 	balances=`bb_request $card_balance_url -d '{}' -f` || balances=
 	if [[ -z $balances ]]; then
 		authenticate_sequoia || return 1
