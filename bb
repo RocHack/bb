@@ -30,13 +30,12 @@ bb_request() {
 	fi
 	check_cookies
 	curl -s -b $cookie_jar -c $cookie_jar $url 2>&-
-	echo curl -s -b $cookie_jar -c $cookie_jar $url >>bb.log
+	#echo curl -s -b $cookie_jar -c $cookie_jar $url >>bb.log
 }
 
 # check if a file is accessible to other users
 insecure_file() {
-	perms=`stat $1 --format %a`
-	test ${perms:1} -ne '00'
+	[[ -n `find $1 -perm +077` ]]
 }
 
 # get saved login info from ~/.netrc
@@ -110,6 +109,12 @@ authenticate() {
 	echo Logged in as $user_id.
 }
 
+# base64 encode, needed for logging in
+base64() {
+	# try openssl or python
+	openssl base64 2>&- || python -m base64 2>&- 
+}
+
 # Log in and validate the session.
 login() {
 	# prompt user if no credentials found
@@ -128,7 +133,7 @@ login() {
 	fi
 
 	# log in
-	enc_pass=$(echo -n $password | openssl base64)
+	enc_pass=`echo -n $password | base64`
 	#echo Logging in...
 	bb_request $login_path -d "user_id=$user_id&encoded_pw=$enc_pass" >&-
 	check_session
@@ -152,8 +157,7 @@ bb_help() {
 }
 
 invalid_command() {
-	exec >&2
-	echo "bb: $1 is not a bb command. See 'bb help'"
+	echo "bb: $1 is not a bb command. See 'bb help'" >&2
 	exit 127
 }
 
@@ -167,7 +171,7 @@ usage_submit() {
 
 # Get courses list from main page
 get_courses() {
-	bb_request $main_path | sed -n '/course-record" valign="_top"/{n;N;N;N;s/^\(.*tab_tab_group_id=_2_1&url=\/\([^"]*\)">\)\?\s*\([^<]*[a-zA-Z0-9;,.]\)\s*<.*"top">\([^<]*\)<\/td>$/\/\2 \4 \3/p}'
+	bb_request $main_path | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/\([^"]*\)">\)*[^A-Z]*\([^<]*[A-Z0-9]\)[^A-Z0-9]*<.*"top">\([^<]*\)<\/td>$/\/\2 \4 \3/p; }'
 }
 
 bb_courses() {
@@ -193,7 +197,7 @@ check_submission_file() {
 		echo "'$1' is not a file." >&2
 	elif [[ ! -r $1 ]]; then
 		echo "File '$1' is not readable." >&2
-	elif [[ $(du -b $1 | cut -f 1) -lt 1 ]]; then
+	elif [[ $(du $1 | cut -f 1) -lt 1 ]]; then
 		echo "File '$1' is empty." >&2
 	else
 		# File is okay
