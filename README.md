@@ -33,8 +33,6 @@ Submitting an assignment
 
     bb submit [<course> [<assignment>]] [-f <submission_file>]
 
-The following describes how the tool should work, not how it works now.
-
 The program reads your login info from `~/.netrc` or prompts you
 to enter it.
 
@@ -62,8 +60,7 @@ whose title matches the string given in the `assignment` argument.
 bb then prompts you for a file if you didn't specify one in the arguments, and
 then submits it.
 
-    Submitting my_sorts.zip...
-    Submission accepted, 9:59 PM.
+    Submission accepted.
 
 Checking declining/Uros balance
 ------------------------------
@@ -83,8 +80,7 @@ To specify either declining or Uros, Use the option `-d` or `-u`, as follows:
 Todo
 ----
 
-- Implement submit command
-- Allow specifying text submission or submission comments?
+- Allow specifying text submission, submission comments, or multiple files
 - Testing
 - Change verbosity: -v or -q options
 - Add more commands?

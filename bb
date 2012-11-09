@@ -9,6 +9,7 @@ bb_url="https://$bb_server"
 login_path='/webapps/login/index'
 frameset_path='/webapps/portal/frameset.jsp'
 main_path='/webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_23_1'
+upload_assignment_path='/webapps/blackboard/execute/uploadAssignment?action=submit'
 
 sequoia_token_path='/webapps/bb-ecard-sso-bb_bb60/token.jsp'
 sequoia_auth_url='https://ecard.sequoiars.com/eCardServices/AuthenticationHandler.ashx'
@@ -359,14 +360,30 @@ get_assignment() {
 }
 
 upload_assignment() {
-	upload_form_path="$1"
-	submission="$2"
+	local upload_form_path="$1"
+	local submission_file="$2"
+	local submission_text=
+	local comments=
 
-	echo Submit $submission to $1
-	echo Not implemented! >&2
+	# newFile_attachmentType=S for Smart Text, H for HTML, P for Plain Text
 
-	# Embed the submission file in the form data and submit it.
-	# Check for a positive result.
+	filename=${submission_file##*/}
+
+	if bb_request -f "$upload_form_path&action=submit" \
+		-F student_commentstext=$comments \
+		-F studentSubmission.text=$submission_text \
+		-F studentSubmission.type=P \
+		-F newFile_attachmentType=L \
+		-F newFile_fileId=new \
+		-F newFile_LocalFile0=@$submission_file;filename=$filename \
+		-F newFile_linkTitle=$filename
+	then
+		echo Submission accepted.
+	else
+		echo Unable to submit.
+		return 1
+	fi
+
 }
 
 bb_submit() {
