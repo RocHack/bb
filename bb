@@ -134,9 +134,15 @@ login() {
 
 	# log in
 	enc_pass=`echo -n $password | base64`
-	#echo Logging in...
-	bb_request $login_path -d "user_id=$user_id&encoded_pw=$enc_pass" >&-
-	check_session
+	if [[ -z `bb_request $login_path -d "user_id=$user_id&encoded_pw=$enc_pass&encoded_pw_unicode=." -b 'cookies_enabled=true'` ]]
+	then
+		authenticated=1
+		return 0
+	else
+		authenticated=
+		password=
+		return 1
+	fi
 }
 
 # main command

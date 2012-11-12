@@ -37,10 +37,8 @@ The program reads your login info from `~/.netrc` or prompts you
 to enter it.
 
     $ bb submit csc172 sorts -f my_sorts.zip
-    Enter your net ID:
-    > clehner
-    Enter your password:
-    >
+    Net ID: clehner
+    Password:
 
 Then bb logs in with the given credentials. If login succeeds, it tries to
 find a course with a name matching what you gave it in the `course` argument.
@@ -54,8 +52,7 @@ whose title matches the string given in the `assignment` argument.
     Found 2 assignments.
     1) Lab of 10/18: Sorts
     2) Lab of 10/23: More Sorts
-    Choose an assignment:
-    > 1
+    Choose an assignment: 1
 
 bb then prompts you for a file if you didn't specify one in the arguments, and
 then submits it.
