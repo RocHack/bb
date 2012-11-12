@@ -87,6 +87,7 @@ check_session() {
 		return 0
 	else
 		authenticated=
+		password=
 		return 1
 	fi
 }
@@ -121,15 +122,13 @@ login() {
 	# prompt user if no credentials found
 	if [[ -z $user_id ]]
 	then
-		echo Enter your Net ID:
-		read user_id
+		read -p 'Net ID: ' user_id
 	fi
 
 	if [[ -z $password ]]
 	then
-		echo Enter your password:
 		stty -echo
-		read password
+		read -p 'Password: ' password; echo
 		stty echo
 	fi
 
@@ -454,8 +453,6 @@ bb_balance() {
 	opt="$2"
 
 	check_cookies
-
-	bb_request $card_balance_url -i -d '{}' -f
 
 	# Try to re-use the session
 	local balances
