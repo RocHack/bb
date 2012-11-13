@@ -62,7 +62,7 @@ then submits it.
 Checking declining/Uros balance
 ------------------------------
 
-    bb balance [-d] [-u]
+    bb balance [-d] [-u] [-q]
 
 This command prints your account balances. For example:
 
@@ -74,10 +74,22 @@ To specify either declining or Uros, Use the option `-d` or `-u`, as follows:
     $ bb balance -d
     516.42
 
+Quiet mode
+----------
+
+If bb has not been run recently, it will have to log in to Blackboard (and to
+the Sequoia system for the balance command). For example:
+
+	$ bb balance -d
+	Logged in.
+	Logged in to Sequoia.
+    516.42
+
+To suppress the "Logged in..." messages, simply use the `-q` option.
+
 Todo
 ----
 
 - Allow specifying text submission, submission comments, or multiple files
 - Testing
-- Change verbosity: -v or -q options
 - Add more commands?

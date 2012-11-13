@@ -22,6 +22,8 @@ user_id=
 password=
 authenticated=
 
+quiet_mode=
+
 bb_request() {
 	# Allow path or full url
 	if [[ ${1:0:1} == "/" ]]; then
@@ -97,7 +99,7 @@ check_session() {
 authenticate() {
 	# Check if the session cookies still work.
 	if check_session; then
-		echo Logged in.
+		[[ $quiet_mode ]] || echo Logged in.
 		return 0
 	fi
 
@@ -108,7 +110,7 @@ authenticate() {
 	do
 		login
 	done
-	echo Logged in as $user_id.
+	[[ $quiet_mode ]] || echo Logged in as $user_id.
 }
 
 # base64 encode, needed for logging in
@@ -160,6 +162,8 @@ bb_help() {
 	echo '    courses    List your courses'
 	echo '    balance    Get your declining/Uros balance'
 	echo '    help       Get this help message'
+	echo 'Global options:'
+	echo '    -q         Suppress "Logged in..." messages'
 }
 
 invalid_command() {
@@ -388,20 +392,19 @@ upload_assignment() {
 		echo Unable to submit.
 		return 1
 	fi
-
 }
 
 bb_submit() {
 	local course=
 	local assignment=
 	local submission=
-	local opt=start
+	local opt=
 
 	# Process arguments
 	for arg; do
-		if [[ $opt == start ]]; then opt=
-		elif [[ $opt == submission ]]; then submission="$arg"; opt=
+		if [[ $opt == submission ]]; then submission="$arg"; opt=
 		elif [[ $arg == '-f' ]]; then opt='submission'
+		elif [[ $arg == '-q' ]]; then true
 		elif [[ -z $course ]]; then course="$arg"
 		elif [[ -z $assignment ]]; then assignment="$arg"
 		fi
@@ -442,7 +445,7 @@ authenticate_sequoia() {
 
 	resp=`bb_request $sequoia_auth_url -F "AUTHENTICATIONTOKEN=$auth_token"`
 	if [[ $resp == 'No destination url posted.' ]]; then
-		echo Logged in to Sequoia.
+		[[ $quiet_mode ]] || echo Logged in to Sequoia.
 		true
 	else
 		echo Unable to log in to Sequoia. >&2
@@ -452,11 +455,25 @@ authenticate_sequoia() {
 
 # Get account balances
 bb_balance() {
-	if [[ $# -gt 2 ]]; then
-		echo Usage: bb balance [-d] [-u] >&2
+	local print_declining=
+	local print_uros=
+	local print_both=
+	local badarg=
+
+	for arg; do
+		case "$arg" in
+			-d) print_declining=1;;
+			-u) print_uros=1;;
+			-q) ;;
+			*) badarg=1;;
+		esac
+	done
+	[[ $print_declining == $print_uros ]] && print_both=1
+
+	if [[ $badarg ]]; then
+		echo Usage: bb balance [-d] [-u] [-q] >&2
 		return 1
 	fi
-	opt="$2"
 
 	check_cookies
 
@@ -473,9 +490,9 @@ bb_balance() {
 	declining=${part1%%,*}
 	uros=${part2%%,*}
 
-	if [[ $opt == '-d' ]]; then echo $declining
-	elif [[ $opt == '-u' ]]; then echo $uros
-	else echo $declining $uros
+	if [[ $print_both ]]; then echo $declining $uros
+	elif [[ $print_declining ]]; then echo $declining
+	elif [[ $print_uros ]]; then echo $uros
 	fi
 }
 
@@ -493,10 +510,18 @@ then
 	usage_main
 fi
 
-case "$1" in
+for arg; do
+	if [[ $arg == '-q' ]]; then
+		quiet_mode=1
+	fi
+done
+
+cmd="$1"
+shift
+case "$cmd" in
 	submit) bb_submit $@;;
-	courses) bb_courses;;
+	courses) bb_courses $@;;
 	balance) bb_balance $@;;
 	help) bb_help $@;;
-	*) invalid_command $@;;
+	*) invalid_command $cmd;;
 esac
