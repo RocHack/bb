@@ -378,14 +378,14 @@ upload_assignment() {
 
 	filename=${submission_file##*/}
 
-	if bb_request -f "$upload_form_path&action=submit" \
-		-F student_commentstext=$comments \
-		-F studentSubmission.text=$submission_text \
-		-F studentSubmission.type=P \
-		-F newFile_attachmentType=L \
-		-F newFile_fileId=new \
-		-F newFile_LocalFile0=@$submission_file;filename=$filename \
-		-F newFile_linkTitle=$filename
+	if bb_request "$upload_form_path&action=submit" -f \
+		-F "student_commentstext=$comments" \
+		-F "studentSubmission.text=$submission_text" \
+		-F "studentSubmission.type=P" \
+		-F "newFile_attachmentType=L" \
+		-F "newFile_fileId=new" \
+		-F "newFile_LocalFile0=@$submission_file;filename=$filename" \
+		-F "newFile_linkTitle=$filename"
 	then
 		echo Submission accepted.
 	else
