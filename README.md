@@ -31,7 +31,7 @@ To test out that you can log in with bb, try this one:
 Submitting an assignment
 ------------------------
 
-    bb submit [<course> [<assignment>]] [-f <submission_file>]
+    bb submit [<course> [<assignment>]] [-f <submission_file>] [-t <submission_text>] [-c <comments>]
 
 The program reads your login info from `~/.netrc` or prompts you
 to enter it.
@@ -54,10 +54,15 @@ whose title matches the string given in the `assignment` argument.
     2) Lab of 10/23: More Sorts
     Choose an assignment: 1
 
-bb then prompts you for a file if you didn't specify one in the arguments, and
-then submits it.
+bb then prompts you for a file if you didn't specify a submission in the
+arguments. Then the submission is sent.
 
     Submission accepted.
+
+You can also specify a plain text submission with `-t`, and submission comments
+with `-c`. The submission text can be instead of or in addition to a file. If
+you do not specify a submission file but you specify a submission text, you will
+not be prompted for the file.
 
 Checking declining/Uros balance
 ------------------------------
@@ -69,7 +74,7 @@ This command prints your account balances. For example:
     $ bb balance
     516.42 26.03
 
-To specify either declining or Uros, Use the option `-d` or `-u`, as follows:
+To specify either declining or Uros, Use the option `-d` or `-u`:
 
     $ bb balance -d
     516.42
@@ -80,9 +85,9 @@ Quiet mode
 If bb has not been run recently, it will have to log in to Blackboard (and to
 the Sequoia system for the balance command). For example:
 
-	$ bb balance -d
-	Logged in.
-	Logged in to Sequoia.
+    $ bb balance -d
+    Logged in.
+    Logged in to Sequoia.
     516.42
 
 To suppress the "Logged in..." messages, simply use the `-q` option.
@@ -90,6 +95,6 @@ To suppress the "Logged in..." messages, simply use the `-q` option.
 Todo
 ----
 
-- Allow specifying text submission, submission comments, or multiple files
-- Testing
+- Allow specifying multiple files
 - Add more commands?
+- Add help command

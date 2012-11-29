@@ -27,12 +27,13 @@ quiet_mode=
 bb_request() {
 	# Allow path or full url
 	if [[ ${1:0:1} == "/" ]]; then
-		url=$bb_url$@
+		url="$bb_url$1"
 	else
-		url=$@
+		url="$1"
 	fi
+	shift
 	check_cookies
-	curl -s -b $cookie_jar -c $cookie_jar $url 2>&-
+	curl -s -b "$cookie_jar" -c "$cookie_jar" "$url" $@ 2>&-
 	#echo curl -s -b $cookie_jar -c $cookie_jar $url >>bb.log
 }
 
@@ -167,7 +168,7 @@ bb_help() {
 }
 
 invalid_command() {
-	echo "bb: $1 is not a bb command. See 'bb help'" >&2
+	echo "bb: '$1' is not a bb command. See 'bb help'" >&2
 	exit 127
 }
 
@@ -175,7 +176,7 @@ invalid_command() {
 
 usage_submit() {
 	exec >&2
-	echo 'Usage: bb submit [<course> [<assignment>]] [-f <submission_file>]'
+	echo 'Usage: bb submit [<course> [<assignment>]] [-t <submission_text>] [-f <submission_file>] [-c <comments>]'
 	exit 64
 }
 
@@ -373,11 +374,12 @@ get_assignment() {
 	ASSIGNMENT="$assignment"
 }
 
+# upload_assignment form_path sub_text comments sub_file
 upload_assignment() {
 	local upload_form_path="$1"
-	local submission_file="$2"
-	local submission_text=
-	local comments=
+	local submission_text="$2"
+	local comments="$3"
+	local submission_file="$4"
 
 	# newFile_attachmentType=S for Smart Text, H for HTML, P for Plain Text
 
@@ -403,15 +405,22 @@ bb_submit() {
 	local course=
 	local assignment=
 	local submission=
+	local submission_text=
+	local comments=
 	local opt=
 
 	# Process arguments
 	for arg; do
-		if [[ $opt == submission ]]; then submission="$arg"; opt=
-		elif [[ $arg == '-f' ]]; then opt='submission'
+		if [[ $opt == file ]]; then submission="$arg"; opt=
+		elif [[ $opt == text ]]; then submission_text="$arg"; opt=
+		elif [[ $opt == comments ]]; then comments="$arg"; opt=
+		elif [[ $arg == '-f' ]]; then opt='file'
+		elif [[ $arg == '-t' ]]; then opt='text'
+		elif [[ $arg == '-c' ]]; then opt='comments'
 		elif [[ $arg == '-q' ]]; then true
 		elif [[ -z $course ]]; then course="$arg"
 		elif [[ -z $assignment ]]; then assignment="$arg"
+		else echo Unknown argument "$arg" >&2; exit 1
 		fi
 	done
 
@@ -431,13 +440,15 @@ bb_submit() {
 	get_assignment $course_path $assignment
 	assignment_upload_path=${ASSIGNMENT%% *}
 
-	# Prompt for submission file if it was not specified
-	until check_submission_file $submission; do
+	# Prompt for submission file if no file or text was specified.
+	until [[ -n $submission_text ]] || check_submission_file $submission; do
 		echo Enter the file name of your submission:
 		read -e submission
 	done
 
-	upload_assignment $assignment_upload_path $submission
+	upload_assignment "$assignment_upload_path" \
+		"$submission_text" "$comments" \
+		"$submission"
 }
 
 # command: balance
@@ -524,7 +535,7 @@ done
 cmd="$1"
 shift
 case "$cmd" in
-	submit) bb_submit $@;;
+	submit) bb_submit "$@";;
 	courses) bb_courses $@;;
 	balance) bb_balance $@;;
 	help) bb_help $@;;
