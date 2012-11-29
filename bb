@@ -179,21 +179,26 @@ usage_submit() {
 	exit 64
 }
 
-# Get courses list from main page
+# Get courses list from main page.
+# Outputs courses by line in the form:
+# path name term crn title
+# If the course has no link, path is empty and the line will start with a space.
 get_courses() {
-	bb_request $main_path | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/\([^"]*\)">\)*[^A-Z]*\([^<]*[A-Z0-9]\)[^A-Z0-9]*<.*"top">\([^<]*\)<\/td>$/\/\2 \4 \3/p; }'
+	bb_request $main_path | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/\([^"]*\)">\)*[^A-Z]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
 }
 
 bb_courses() {
 	authenticate
-	get_courses | while read course_path course_name course_title 
+	get_courses | while read path name term crn title
 	do
 		# example:
-		# course_path=/webapps/blackboard/execute/courseMain?course_id=_54745_1
-		# course_name='CSC172.2012FALL.77613'
-		# course_title='THE SCI OF DATA STRUCTURES - 2012FALL'
+		# path=/webapps/blackboard/execute/courseMain?course_id=_54745_1
+		# name=CSC172
+		# term=2012FALL
+		# crn=77613
+		# title='THE SCI OF DATA STRUCTURES'
 
-		echo $course_name - $course_title
+		echo $name.$term.$crn - $title
 	done
 }
 

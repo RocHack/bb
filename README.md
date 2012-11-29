@@ -44,7 +44,7 @@ Then bb logs in with the given credentials. If login succeeds, it tries to
 find a course with a name matching what you gave it in the `course` argument.
 
     Logged in as clehner.
-    Found CSC172.2012FALL.77613 - THE SCI OF DATA STRUCTURES - 2012FALL
+    Found CSC172 2012FALL 77613 THE SCI OF DATA STRUCTURES
 
 bb then examines the course's _Course Materials_ and looks for an assignment
 whose title matches the string given in the `assignment` argument.
