@@ -39,7 +39,7 @@ bb_request() {
 
 # check if a file is accessible to other users
 insecure_file() {
-	[[ -n `find $1 -perm +077` ]]
+	[[ -n `find $1 -perm /066` ]]
 }
 
 # get saved login info from ~/.netrc
