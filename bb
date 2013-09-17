@@ -23,6 +23,7 @@ password=
 authenticated=
 
 quiet_mode=
+cookie_jar_warned=
 
 bb_request() {
 	# Allow path or full url
@@ -63,9 +64,10 @@ check_cookies() {
 	# check cookie file
 	if [[ -e $cookie_jar ]]
 	then
-		if insecure_file $cookie_jar
+		if insecure_file $cookie_jar && [[ -z $cookie_jar_warned ]]
 		then
 			echo "Warning: $cookie_jar has insecure permissions." >&2
+			cookie_jar_warned=1
 		fi
 	else
 		# create the cookie jar
@@ -490,8 +492,6 @@ bb_balance() {
 		echo Usage: bb balance [-d] [-u] [-q] >&2
 		return 1
 	fi
-
-	check_cookies
 
 	# Try to re-use the session
 	local balances
