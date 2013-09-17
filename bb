@@ -8,6 +8,7 @@ bb_server='my.rochester.edu'
 bb_url="https://$bb_server"
 login_path='/webapps/login/index'
 frameset_path='/webapps/portal/frameset.jsp'
+tab_action_path='/webapps/portal/execute/tabs/tabAction'
 main_path='/webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_23_1'
 upload_assignment_path='/webapps/blackboard/execute/uploadAssignment?action=submit'
 
@@ -182,12 +183,21 @@ usage_submit() {
 	exit 64
 }
 
+bb_ajax_module() {
+	mod_id="$1"
+	bb_request $tab_action_path \
+		-F 'action=refreshAjaxModule' \
+		-F "modId=$mod_id" \
+		-F 'tabId=_27_1' \
+		-F 'tab_tab_group_id=_23_1'
+}
+
 # Get courses list from main page.
 # Outputs courses by line in the form:
 # path name term crn title
 # If the course has no link, path is empty and the line will start with a space.
 get_courses() {
-	bb_request $main_path | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/\([^"]*\)">\)*[^A-Z]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
+	bb_ajax_module _452_1 | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/\([^"]*\)">\)*[^A-Z]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
 }
 
 bb_courses() {
