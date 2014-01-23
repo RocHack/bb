@@ -79,22 +79,26 @@ To specify either declining or Uros, Use the option `-d` or `-u`:
     $ bb balance -d
     516.42
 
-Quiet mode
+Verbose mode
 ----------
 
 If bb has not been run recently, it will have to log in to Blackboard (and to
-the Sequoia system for the balance command). For example:
+the Sequoia system for the balance command). This may take a while.
 
-    $ bb balance -d
+To get a better idea of what is happening, you can use the `-v` option to increase verbosity. This is useful for debugging bb. 
+
+For example:
+
+    $ bb balance -d -v
     Logged in.
     Logged in to Sequoia.
     516.42
 
-To suppress the "Logged in..." messages, simply use the `-q` option.
+To suppress the "Logged in..." messages, simply leave off the `-v` option.
 
 Todo
 ----
 
 - Allow specifying multiple files
-- Add more commands?
-- Add help command
+- Add more commands
+- Add help command for each command

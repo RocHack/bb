@@ -23,7 +23,7 @@ user_id=
 password=
 authenticated=
 
-quiet_mode=
+verbose_mode=
 cookie_jar_warned=
 
 bb_request() {
@@ -102,7 +102,7 @@ check_session() {
 authenticate() {
 	# Check if the session cookies still work.
 	if check_session; then
-		[[ $quiet_mode ]] || echo Logged in.
+		[[ $verbose_mode ]] && echo Logged in.
 		return 0
 	fi
 
@@ -113,7 +113,7 @@ authenticate() {
 	do
 		login
 	done
-	[[ $quiet_mode ]] || echo Logged in as $user_id.
+	[[ $verbose_mode ]] && echo Logged in as $user_id.
 }
 
 # base64 encode, needed for logging in
@@ -166,7 +166,7 @@ bb_help() {
 	echo '    balance    Get your declining/Uros balance'
 	echo '    help       Get this help message'
 	echo 'Global options:'
-	echo '    -q         Suppress "Logged in..." messages'
+	echo '    -v         Increase verbosity'
 }
 
 invalid_command() {
@@ -428,7 +428,7 @@ bb_submit() {
 		elif [[ $arg == '-f' ]]; then opt='file'
 		elif [[ $arg == '-t' ]]; then opt='text'
 		elif [[ $arg == '-c' ]]; then opt='comments'
-		elif [[ $arg == '-q' ]]; then true
+		elif [[ $arg == '-v' ]]; then true
 		elif [[ -z $course ]]; then course="$arg"
 		elif [[ -z $assignment ]]; then assignment="$arg"
 		else echo Unknown argument "$arg" >&2; exit 1
@@ -472,7 +472,7 @@ authenticate_sequoia() {
 
 	resp=`bb_request $sequoia_auth_url -F "AUTHENTICATIONTOKEN=$auth_token"`
 	if [[ $resp == 'No destination url posted.' ]]; then
-		[[ $quiet_mode ]] || echo Logged in to Sequoia.
+		[[ $verbose_mode ]] && echo Logged in to Sequoia.
 		true
 	else
 		echo Unable to log in to Sequoia. >&2
@@ -491,14 +491,14 @@ bb_balance() {
 		case "$arg" in
 			-d) print_declining=1;;
 			-u) print_uros=1;;
-			-q) ;;
+			-v) ;;
 			*) badarg=1;;
 		esac
 	done
 	[[ $print_declining == $print_uros ]] && print_both=1
 
 	if [[ $badarg ]]; then
-		echo Usage: bb balance [-d] [-u] [-q] >&2
+		echo Usage: bb balance [-d] [-u] [-v] >&2
 		return 1
 	fi
 
@@ -536,8 +536,8 @@ then
 fi
 
 for arg; do
-	if [[ $arg == '-q' ]]; then
-		quiet_mode=1
+	if [[ $arg == '-v' ]]; then
+		verbose_mode=1
 	fi
 done
 
