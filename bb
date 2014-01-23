@@ -85,8 +85,7 @@ check_session() {
 
 	# Check if a request results in a redirect to the login page.
 	if [[ -z $(bb_request $frameset_path -i | \
-		sed -n -e '/^Location: .*login/p' \
-			-e '/location\.replace(/p') ]]
+		sed -n -e '/^Location: .*login/p') ]]
 	then
 		#echo Connected.
 		authenticated=1
