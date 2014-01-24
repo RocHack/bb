@@ -16,6 +16,12 @@ sequoia_token_path='/webapps/bb-ecard-sso-bb_bb60/token.jsp'
 sequoia_auth_url='https://ecard.sequoiars.com/eCardServices/AuthenticationHandler.ashx'
 card_balance_url='https://ecard.sequoiars.com/eCardServices/eCardServices.svc/WebHttp/GetAccountHolderInformationForCurrentUser'
 
+quikpay_token_path='/webapps/portal/quikpay.jsp'
+quikpay_root='https://quikpayasp.com'
+quikpay_auth_path='/rochester/tuition/payer.do'
+quikpay_history_path='/rochester/qp/history/index.do'
+quikpay_current_statement_path='/rochester/qp/ebill/currentStatementDispatcher.do'
+
 cookie_jar=~/.bbsession
 
 # login info will be filled from ~/.netrc or by prompting the user
@@ -167,6 +173,8 @@ bb_help() {
 	echo '    courses    List your courses'
 	echo '    submit     Submit an assignment for a course'
 	echo '    balance    Get your declining/Uros balance'
+	echo '    bill       Get your current tuition bill'
+	echo '    payments   Get your history of tuition payments'
 	echo 'Global options:'
 	echo '    -v         Increase verbosity'
 }
@@ -523,8 +531,98 @@ bb_balance() {
 	fi
 }
 
-# command: help
+# Establish a session with QuikPAY (Tuition payment system) through Blackboard
+authenticate_quikpay() {
+	authenticate
 
+	# Get the auth token/form
+	auth_form=`bb_request $quikpay_token_path | \
+		sed -n '/name=.*value=/{ s/.*name="\([^"]*\)" value=\("\?\)\([^">]*\)\2.*/\1=\3/; s/ /+/g; s/^/-d /; p; }'`
+
+	# Use the auth form to log in to quikpay
+	auth_url=$quikpay_root$quikpay_auth_path
+	if bb_request $auth_url $auth_form | grep -q 'Welcome to the'; then
+		[[ $verbose_mode ]] && echo Logged in to Quikpay.
+		true
+	else
+		echo Unable to log in to Quikpay. >&2
+		false
+	fi
+}
+
+# Make a request to Quikpay, authenticating if needed
+quikpay_request() {
+	local temp=`mktemp`
+
+	bb_request $quikpay_root$@ -i > $temp
+
+	# Check for existing session
+	if grep -q '500 Internal Server Error' $temp; then
+		authenticate_quikpay
+		bb_request $quikpay_root$@ > $temp
+	fi
+
+	cat $temp
+	rm $temp
+}
+
+# command: payments
+# Get tuition payment transaction history, in CSV format
+bb_payments() {
+	echo Confirmation Number,Date,Amount,Account,Payment Method,Payer
+	quikpay_request $quikpay_history_path |\
+		sed '/<td/,/\w/!d; /<td/d; s/^\s*//; s/\s*$//; /<img/d; /^$/d' |\
+		sed '$!N;N;N;N;N; s/\n/,/g'
+}
+
+usage_bill() {
+	echo Usage: bb bill [-v] [--pdf statement.pdf] >&2
+	exit 1
+}
+
+# command: bill
+# Look up a tuition statement
+bb_bill() {
+	local opt=
+	local pdf_output_file=
+	local pdf_path=
+
+	for arg; do
+		if [[ $arg == '-v' ]]; then true
+		elif [[ $arg == '-h' ]]; then usage_bill
+		elif [[ $arg == '--pdf' ]]; then opt=pdf; pdf_output_file=statement.pdf
+		elif [[ $opt == pdf ]]; then pdf_output_file="$arg"; opt=
+		else echo Unknown argument "$arg" >&2; exit $EX_USAGE
+		fi
+	done
+
+	if [[ $pdf_output_file ]]; then
+		# Get the PDF of the statement
+		pdf_path=`quikpay_request $quikpay_current_statement_path -L |\
+			sed -e '/submitStatementPDF/!d'\
+				-e 's/^.*href="\([^"]*\)".*$/\1/; s/&amp;/\&/g'`
+
+	else
+		# Extract the statement text
+		#cat statement.html |\
+		quikpay_request $quikpay_current_statement_path -L |\
+			sed -n -e '/ElementLabel/{n; s/^\s*//; s/\s*$/:/; p}'\
+			-e '/ElementValue/{n;N;N; s/\s*<.*$//; s/^\s*\(.*\)\s*$/\1/; s/\s*$//; p; }' |\
+			sed '/:/N;s/\n/ /'
+	fi
+
+	if [[ $pdf_output_file ]]; then
+		if [[ $pdf_path ]]; then
+			echo Saving statement PDF to "$pdf_output_file"
+			quikpay_request "$pdf_path" > "$pdf_output_file"
+		else
+			echo Failed to get PDF >&2
+			exit 1
+		fi
+	fi
+}
+
+# command: help
 usage_help() {
 	bb_help
 	exit 64
@@ -550,5 +648,7 @@ case "$cmd" in
 	submit) bb_submit "$@";;
 	courses) bb_courses $@;;
 	balance) bb_balance $@;;
+	bill) bb_bill $@;;
+	payments) bb_payments $@;;
 	*) invalid_command $cmd;;
 esac

@@ -79,6 +79,21 @@ To specify either declining or Uros, Use the option `-d` or `-u`:
     $ bb balance -d
     516.42
 
+Looking up tuition information
+------------------------------
+
+Get your current tuition statement:
+
+    $ bb bill
+
+Get a PDF of your current statement:
+
+    $ bb bill --pdf my-statement.pdf
+
+Get your history of tuition payments (in CSV format):
+
+    $ bb history
+
 Verbose mode
 ----------
 
@@ -99,6 +114,7 @@ To suppress the "Logged in..." messages, simply leave off the `-v` option.
 Todo
 ----
 
-- Allow specifying multiple files
+- Allow specifying multiple files for submissions
 - Add more commands
 - Add help command for each command
+- Allow fetching past tuition statements
