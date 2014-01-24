@@ -26,6 +26,9 @@ authenticated=
 verbose_mode=
 cookie_jar_warned=
 
+# exit codes
+EX_USAGE=64
+
 bb_request() {
 	# Allow path or full url
 	if [[ ${1:0:1} == "/" ]]; then
@@ -36,7 +39,6 @@ bb_request() {
 	shift
 	check_cookies
 	curl -s -b "$cookie_jar" -c "$cookie_jar" "$url" $@ 2>&-
-	#echo curl -s -b $cookie_jar -c $cookie_jar $url >>bb.log
 }
 
 # check if a file is accessible to other users
@@ -119,7 +121,7 @@ authenticate() {
 # base64 encode, needed for logging in
 base64() {
 	# try openssl or python
-	openssl base64 2>&- || python -m base64 2>&- 
+	openssl base64 2>&- || python -m base64 2>&-
 }
 
 # Log in and validate the session.
@@ -155,16 +157,16 @@ login() {
 usage_main() {
 	exec >/dev/stderr
 	bb_help
-	exit 64
+	exit 1
 }
 
 bb_help() {
 	echo 'Usage: bb <command> <args>'
 	echo 'Commands:'
-	echo '    submit     Submit an assignment for a course'
-	echo '    courses    List your courses'
-	echo '    balance    Get your declining/Uros balance'
 	echo '    help       Get this help message'
+	echo '    courses    List your courses'
+	echo '    submit     Submit an assignment for a course'
+	echo '    balance    Get your declining/Uros balance'
 	echo 'Global options:'
 	echo '    -v         Increase verbosity'
 }
@@ -179,7 +181,7 @@ invalid_command() {
 usage_submit() {
 	exec >&2
 	echo 'Usage: bb submit [<course> [<assignment>]] [-t <submission_text>] [-f <submission_file>] [-c <comments>]'
-	exit 64
+	exit 1
 }
 
 bb_ajax_module() {
@@ -218,7 +220,7 @@ bb_courses() {
 check_submission_file() {
 	if [[ -z $1 ]]; then
 		false
-	elif [[ ! -e $1 ]]; then 
+	elif [[ ! -e $1 ]]; then
 		echo "File '$1' does not exist." >&2
 	elif [[ ! -f $1 ]]; then
 		echo "'$1' is not a file." >&2
@@ -258,7 +260,7 @@ get_course() {
 			echo "Found no courses matching '$1'"
 		else
 			# If 1 course matches, use that one.
-			num_matches=`wc -l <<< "$courses"` 
+			num_matches=`wc -l <<< "$courses"`
 			if [[ $num_matches -eq 1 ]]; then
 				course="$courses"
 				# Trim off path
@@ -346,7 +348,7 @@ get_assignment() {
 			assignments="$all_assignments"
 		else
 			# If 1 assignment matches, use that one.
-			num_matches=`wc -l <<< "$assignments"` 
+			num_matches=`wc -l <<< "$assignments"`
 			if [[ $num_matches -eq 1 ]]; then
 				assignment="$assignments"
 				# Trim off path
@@ -429,9 +431,10 @@ bb_submit() {
 		elif [[ $arg == '-t' ]]; then opt='text'
 		elif [[ $arg == '-c' ]]; then opt='comments'
 		elif [[ $arg == '-v' ]]; then true
+		elif [[ $arg == '-h' ]]; then usage_submit
 		elif [[ -z $course ]]; then course="$arg"
 		elif [[ -z $assignment ]]; then assignment="$arg"
-		else echo Unknown argument "$arg" >&2; exit 1
+		else echo Unknown argument "$arg" >&2; exit $EX_USAGE
 		fi
 	done
 
@@ -462,8 +465,6 @@ bb_submit() {
 		"$submission"
 }
 
-# command: balance
-
 # Establish a session with Sequoia Retail Systems through Blackboard
 authenticate_sequoia() {
 	authenticate
@@ -480,6 +481,7 @@ authenticate_sequoia() {
 	fi
 }
 
+# command: balance
 # Get account balances
 bb_balance() {
 	local print_declining=
@@ -499,7 +501,7 @@ bb_balance() {
 
 	if [[ $badarg ]]; then
 		echo Usage: bb balance [-d] [-u] [-v] >&2
-		return 1
+		return $EX_USAGE
 	fi
 
 	# Try to re-use the session
@@ -544,9 +546,9 @@ done
 cmd="$1"
 shift
 case "$cmd" in
+	help|-h) bb_help $@;;
 	submit) bb_submit "$@";;
 	courses) bb_courses $@;;
 	balance) bb_balance $@;;
-	help) bb_help $@;;
 	*) invalid_command $cmd;;
 esac
