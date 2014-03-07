@@ -564,7 +564,7 @@ authenticate_quikpay() {
 
 # Make a request to Quikpay, authenticating if needed
 quikpay_request() {
-	local temp=`mktemp`
+	local temp=`mktemp /tmp/bbout.XXXXXX`
 
 	bb_request $quikpay_root$@ -i > $temp
 
@@ -617,7 +617,7 @@ bb_bill() {
 	else
 		# Extract the statement text
 		quikpay_request $quikpay_current_statement_path -L |\
-			sed -n -e '/ElementLabel/{n; s/^\s*//; s/\s*$/:/; p}'\
+			sed -n -e '/ElementLabel/{n; s/^\s*//; s/\s*$/:/; p; }'\
 			-e '/ElementValue/{n;N;N; s/\s*<.*$//'\
 			-e 's/^\s*\(.*\)\s*$/\1/; s/\s*$//; p; }' |\
 			sed '/:/N;s/\n/ /'
