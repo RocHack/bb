@@ -32,7 +32,7 @@ password=
 authenticated=
 
 verbose_mode=
-cookie_jar_warned=
+cookie_jar_checked=
 
 # exit codes
 EX_USAGE=64
@@ -75,10 +75,13 @@ check_cookies() {
 	# check cookie file
 	if [[ -e $cookie_jar ]]
 	then
-		if insecure_file $cookie_jar && [[ -z $cookie_jar_warned ]]
+		if [[ -z $cookie_jar_checked ]]
 		then
-			echo "Warning: $cookie_jar has insecure permissions." >&2
-			cookie_jar_warned=1
+			if insecure_file $cookie_jar
+			then
+				echo "Warning: $cookie_jar has insecure permissions." >&2
+			fi
+			cookie_jar_checked=1
 		fi
 	else
 		# create the cookie jar
