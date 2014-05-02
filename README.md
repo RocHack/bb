@@ -28,6 +28,22 @@ To test out that you can log in with bb, try this one:
 
     bb courses
 
+Querying grades
+---------------
+
+Get your grades for a course.
+
+    $ bb grades 280
+    Found CSC280 2014SPRING 29543 COMPUTER MODELS &LIMITATIONS.
+
+    1/27 Quiz
+    Jan 27, 2014 5:13 PM
+    Grade: 100.00/100
+    Average: 95.11
+    Median: 100
+
+    ...
+
 Submitting an assignment
 ------------------------
 
@@ -118,3 +134,4 @@ Todo
 - Add more commands
 - Add help command for each command
 - Allow fetching past tuition statements
+- Show entire tuition statement (including charges)

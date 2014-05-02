@@ -11,6 +11,7 @@ frameset_path='/webapps/portal/frameset.jsp'
 tab_action_path='/webapps/portal/execute/tabs/tabAction'
 main_path='/webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_23_1'
 upload_assignment_path='/webapps/blackboard/execute/uploadAssignment?action=submit'
+course_grades_path='/webapps/bb-mygrades-bb_bb60/myGrades?stream_name=mygrades&course_id='
 course_main_path='/webapps/blackboard/execute/courseMain?course_id='
 
 sequoia_token_path='/webapps/bb-ecard-sso-bb_bb60/token.jsp'
@@ -629,6 +630,69 @@ bb_bill() {
 	fi
 }
 
+get_courses_all() {
+	false
+	#bb_request '/webapps/streamViewer/streamViewer'\
+		#-d 'cmd=loadStream&streamName=mygrades_d&providers=%7B%7D&forOverview=false'
+}
+
+# command: grades
+usage_grades() {
+	exec >&2
+	echo 'Usage: bb grades [<course>]'
+	# Secret option: -c <course_id> instead of [<course>]
+	exit 1
+}
+
+# utility for processing grades output
+reverse_paragraphs() {
+	sed '/./{H;d;};x;s/\n/={NL}=/g' | tac | sed '1s/={NL}=//;s/={NL}=/\n/g'
+}
+
+# Look up your grades for a course
+bb_grades() {
+	local cid=
+	local query=
+
+	# Process arguments
+	for arg; do
+		if [[ $opt == cid ]]; then cid="$arg"; opt=
+		elif [[ $arg == '-c' ]]; then opt='cid'
+		elif [[ $arg == '-v' ]]; then true
+		elif [[ $arg == '-h' ]]; then usage_grades
+		elif [[ -z $query ]]; then query="$arg"
+		else query="$query $arg"
+		fi
+	done
+
+	# Make sure we have a cid
+	if [[ -z $cid ]]; then
+		# Turn query into cid
+		if [[ -z $query ]]; then
+			# Get query from user
+			read -p 'Course: ' query
+			if [[ -z $query ]]; then
+				exit 1
+			fi
+		fi
+
+		# Get CID for course
+		# TODO: allow querying past courses using get_courses_all
+		get_course "$query"
+		read cid name term crn title <<< "$COURSE"
+		echo
+	fi
+
+	authenticate
+
+	bb_request "$course_grades_path$cid" | sed -n\
+		-e '/<!-- Title -->/{n;N;N; s/^[^>]*>\s*\(.*\)\s*<[^<]*$/\n\1/; p}'\
+		-e '/<!-- GRADE  -->/{n;N;N;N;N; s/^.*\s\s*\(.*\)<span[^>]*>\(\(\/[^<]*\)<.*\)\?.*$/Grade: \1\3/; p }'\
+		-e '/class="grade-label">\(Median\|Average\)/{ s/^\s*\([^<]*\)<span[^>]*>\([^<]*\)<.*$/\2: \1/; p; }'\
+		-e '/<!-- BEGIN INFO -->/{n;N; s/.*<span class="timestamp">\([^>]*\)<.*/\1/; p }'\
+		| reverse_paragraphs
+}
+
 # command: help
 usage_help() {
 	bb_help
@@ -657,5 +721,6 @@ case "$cmd" in
 	balance) bb_balance $@;;
 	bill) bb_bill $@;;
 	payments) bb_payments $@;;
+	grades) bb_grades "$@";;
 	*) invalid_command $cmd;;
 esac
