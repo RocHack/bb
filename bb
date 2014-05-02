@@ -11,6 +11,7 @@ frameset_path='/webapps/portal/frameset.jsp'
 tab_action_path='/webapps/portal/execute/tabs/tabAction'
 main_path='/webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_23_1'
 upload_assignment_path='/webapps/blackboard/execute/uploadAssignment?action=submit'
+course_main_path='/webapps/blackboard/execute/courseMain?course_id='
 
 sequoia_token_path='/webapps/bb-ecard-sso-bb_bb60/token.jsp'
 sequoia_auth_url='https://ecard.sequoiars.com/eCardServices/AuthenticationHandler.ashx'
@@ -206,12 +207,12 @@ bb_ajax_module() {
 # path name term crn title
 # If the course has no link, path is empty and the line will start with a space.
 get_courses() {
-	bb_ajax_module _452_1 | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/\([^"]*\)">\)*[^A-Z]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
+	bb_ajax_module _452_1 | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/[^"]*course_id=\([^"]*\)">\)*[^A-Z]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
 }
 
 bb_courses() {
 	authenticate
-	get_courses | while read path name term crn title
+	get_courses | while read cid name term crn title
 	do
 		# example:
 		# path=/webapps/blackboard/execute/courseMain?course_id=_54745_1
@@ -324,7 +325,8 @@ get_assignments2() {
 # List titles of all the assignments for a given course
 # Format per line: "assignment_upload_path assignment_title"
 get_assignments() {
-	local course_path="$1"
+	local course_id="$1"
+	local course_path="$course_main_path$course_id"
 
 	# Go to the Course Materials page
 	local course_materials_path=`bb_request $course_path -L | \
@@ -335,10 +337,10 @@ get_assignments() {
 
 # Get an assignment for a given course path, prompting the user if necessary.
 get_assignment() {
-	local course_path="$1"
+	local course_id="$1"
 	local search="$2"
 	local num_matches=0
-	local all_assignments=`get_assignments $course_path`
+	local all_assignments=`get_assignments $course_id`
 	local assignments=
 	local assignment=
 
@@ -393,6 +395,8 @@ get_assignment() {
 
 	# Return result.
 	ASSIGNMENT="$assignment"
+
+	[[ -n "$assignment" ]]
 }
 
 # upload_assignment form_path sub_text comments sub_file
@@ -456,10 +460,13 @@ bb_submit() {
 
 	# Select the course interactively and get the course path
 	get_course $course
-	course_path=${COURSE%% *}
+	course_id=${COURSE%% *}
 
 	# Select the assignment (interactive) and get the assignment upload path
-	get_assignment $course_path $assignment
+	if ! get_assignment $course_id $assignment; then
+		echo >&2 'Unable to find assignment.'
+		exit 1
+	fi
 	assignment_upload_path=${ASSIGNMENT%% *}
 
 	# Prompt for submission file if no file or text was specified.
@@ -604,10 +611,10 @@ bb_bill() {
 
 	else
 		# Extract the statement text
-		#cat statement.html |\
 		quikpay_request $quikpay_current_statement_path -L |\
 			sed -n -e '/ElementLabel/{n; s/^\s*//; s/\s*$/:/; p}'\
-			-e '/ElementValue/{n;N;N; s/\s*<.*$//; s/^\s*\(.*\)\s*$/\1/; s/\s*$//; p; }' |\
+			-e '/ElementValue/{n;N;N; s/\s*<.*$//'\
+			-e 's/^\s*\(.*\)\s*$/\1/; s/\s*$//; p; }' |\
 			sed '/:/N;s/\n/ /'
 	fi
 
