@@ -665,17 +665,7 @@ bb_grades() {
 		fi
 	done
 
-	# Make sure we have a cid
 	if [[ -z $cid ]]; then
-		# Turn query into cid
-		if [[ -z $query ]]; then
-			# Get query from user
-			read -p 'Course: ' query
-			if [[ -z $query ]]; then
-				exit 1
-			fi
-		fi
-
 		# Get CID for course
 		# TODO: allow querying past courses using get_courses_all
 		get_course "$query"
