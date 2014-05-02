@@ -173,6 +173,7 @@ bb_help() {
 	echo 'Commands:'
 	echo '    help       Get this help message'
 	echo '    courses    List your courses'
+	echo '    grades     Get grades for a course'
 	echo '    submit     Submit an assignment for a course'
 	echo '    balance    Get your declining/Uros balance'
 	echo '    bill       Get your current tuition bill'
