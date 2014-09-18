@@ -549,7 +549,7 @@ authenticate_quikpay() {
 
 	# Get the auth token/form
 	auth_form=`bb_request $quikpay_token_path | \
-		sed -n '/name=.*value=/{ s/.*name="\([^"]*\)" value=\("\?\)\([^">]*\)\2.*/\1=\3/; s/ /+/g; s/^/-d /; p; }'`
+		sed -n '/name=.*value=/{ s/.*name="\([^"]*\)"\s*value=\("\?\)\([^">]*\)\2.*/\1=\3/; s/ /+/g; s/^/-d /; p; }'`
 
 	# Use the auth form to log in to quikpay
 	auth_url=$quikpay_root$quikpay_auth_path
