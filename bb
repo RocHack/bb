@@ -537,7 +537,9 @@ bb_balance() {
 	declining=${part1%%,*}
 	uros=${part2%%,*}
 
-	if [[ $print_both ]]; then echo $declining $uros
+	if [[ $print_both ]]; then
+        printf "decl:\t\$ $declining\n"
+        printf "uros:\t\$ $uros\n"
 	elif [[ $print_declining ]]; then echo $declining
 	elif [[ $print_uros ]]; then echo $uros
 	fi

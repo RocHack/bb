@@ -83,12 +83,13 @@ not be prompted for the file.
 Checking declining/Uros balance
 ------------------------------
 
-    bb balance [-d] [-u] [-q]
+    bb balance [-d] [-u] [-v]
 
 This command prints your account balances. For example:
 
     $ bb balance
-    516.42 26.03
+    decl:	$ 516.42
+    uros:	$ 100.07
 
 To specify either declining or Uros, Use the option `-d` or `-u`:
 
