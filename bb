@@ -650,6 +650,11 @@ usage_grades() {
 	exit 1
 }
 
+# reverse lines
+tac() {
+	sed '1!G;h;$!d'
+}
+
 # utility for processing grades output
 reverse_paragraphs() {
 	sed '/./{H;d;};x;s/\n/={NL}=/g' | tac | sed '1s/={NL}=//;s/={NL}=/\n/g'
@@ -682,10 +687,10 @@ bb_grades() {
 	authenticate
 
 	bb_request "$course_grades_path$cid" | sed -n\
-		-e '/<!-- Title -->/{n;N;N; s/^[^>]*>\s*\(.*\)\s*<[^<]*$/\n\1/; p}'\
-		-e '/<!-- GRADE  -->/{n;N;N;N;N; s/^.*\s\s*\(.*\)<span[^>]*>\(\(\/[^<]*\)<.*\)\?.*$/Grade: \1\3/; p }'\
+		-e '/<!-- Title -->/{n;N;N; s/^[^>]*>\s*\(.*\)\s*<[^<]*$/\n\1/; p; }'\
+		-e '/<!-- GRADE  -->/{n;N;N;N;N; s/^.*\s\s*\(.*\)<span[^>]*>\(\(\/[^<]*\)<.*\)\?.*$/Grade: \1\3/; p; }'\
 		-e '/class="grade-label">\(Median\|Average\)/{ s/^\s*\([^<]*\)<span[^>]*>\([^<]*\)<.*$/\2: \1/; p; }'\
-		-e '/<!-- BEGIN INFO -->/{n;N; s/.*<span class="timestamp">\([^>]*\)<.*/\1/; p }'\
+		-e '/<!-- BEGIN INFO -->/{n;N; s/.*<span class="timestamp">\([^>]*\)<.*/\1/; p; }'\
 		| reverse_paragraphs
 }
 
