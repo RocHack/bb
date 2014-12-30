@@ -586,7 +586,7 @@ bb_payments() {
 	echo Confirmation Number,Date,Amount,Account,Payment Method,Payer
 	quikpay_request $quikpay_history_path |\
 		sed '/<td/,/\w/!d; /<td/d; s/^\s*//; s/\s*$//; /<img/d; /^$/d' |\
-		sed '$!N;N;N;N;N; s/\n/,/g'
+		sed '$!N;N;N;N;N;N; s/\n/,/g'
 }
 
 usage_bill() {
