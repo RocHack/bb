@@ -687,14 +687,24 @@ bb_grades() {
 	authenticate
 
 	bb_request "$course_grades_path$cid" | sed -n -f <(cat <<-SED
+		/<div class="grade-item[ "]/{
+			h;
+			i
+		}
+		/<!-- Grade  -->/{
+			:1; N; /<\/div>/!b1;
+			s/\s*<[^>]*>\s*//g;
+			s/.*/Grade: &/;
+			h;
+		}
 		/<!-- Title -->/{
 			:a; N; /<\/div>/!ba;
 			s/\s*<[^>]*>\s*//g;
-			s/.*/\n&/;
 			p;
+			g; /<div/!p;
 		}
-		/<!-- BEGIN INFO -->/{
-			:b; N; /<!-- END INFO -->/!bb;
+		/<div class="info">/{
+			:b; N; /<\/div>/!bb;
 			s/\s*<[^>]*>\s*//g;
 			/./p;
 		}
