@@ -707,7 +707,7 @@ bb_grades() {
 
 	authenticate
 
-	bb_request "$course_grades_path$cid" | sed -n -f <(cat <<-SED
+	bb_request "$course_grades_path$cid" | sed -n -e '
 		/<h3 class="section-title">/{
 			s/.*<h3[^>]*>\([^<]*\).*/\n# \1/;
 			p;
@@ -746,17 +746,16 @@ bb_grades() {
 			/Comments/d;
 			s/\s*<input[^>]* value="\([^"]*\)"[^>]*>\s*/\1: /;
 			G;
-			/<span class='extra-description'/{
-				h; s/<span class='extra-description'>[^<]*//;
+			/<span class=.extra-description./{
+				h; s/<span class=.extra-description.>[^<]*//;
 				s/\(: \)\?\s*<[^>]*>/\1/g;
 				/: ./p;
-				g; s/.*<span class='extra-description'>\([^<]*\).*/\1/;
+				g; s/.*<span class=.extra-description.>\([^<]*\).*/\1/;
 			}
 			s/\(: \)\?\s*<[^>]*>/\1/g;
 			/./p;
 		}
-	SED
-	) | shift_headings | reverse_paragraphs
+	' | shift_headings | reverse_paragraphs
 }
 
 # command: help
