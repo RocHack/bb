@@ -686,11 +686,26 @@ bb_grades() {
 
 	authenticate
 
-	bb_request "$course_grades_path$cid" | sed -n\
-		-e '/<!-- Title -->/{ :a; N; /<\/div>/!ba; s/\s*<[^>]*>\s*//g; s/.*/\n&/; p; }'\
-		-e '/<!-- BEGIN INFO -->/{ :b; N; /<!-- END INFO -->/!bb; s/\s*<[^>]*>\s*//g; /./p; }'\
-		-e '/<!-- GRADE [^ ]* -->/{ :c; N; /grade-label/!bc; s/\s*\(.*\)<span class="grade-label">\([^<]*\).*/\2: \1/g; s/\(: \)\?\s*<[^>]*>\s*/\1/g; p; }'\
-		| reverse_paragraphs
+	bb_request "$course_grades_path$cid" | sed -n -f <(cat <<-SED
+		/<!-- Title -->/{
+			:a; N; /<\/div>/!ba;
+			s/\s*<[^>]*>\s*//g;
+			s/.*/\n&/;
+			p;
+		}
+		/<!-- BEGIN INFO -->/{
+			:b; N; /<!-- END INFO -->/!bb;
+			s/\s*<[^>]*>\s*//g;
+			/./p;
+		}
+		/<!-- GRADE [^ ]* -->/{
+			:c; N; /grade-label/!bc;
+			s/\s*\(.*\)<span class="grade-label">\([^<]*\).*/\2: \1/g;
+			s/\(: \)\?\s*<[^>]*>\s*/\1/g;
+			p;
+		}
+	SED
+	) | reverse_paragraphs
 }
 
 # command: help
