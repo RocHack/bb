@@ -687,10 +687,9 @@ bb_grades() {
 	authenticate
 
 	bb_request "$course_grades_path$cid" | sed -n\
-		-e '/<!-- Title -->/{n;N;N; s/^[^>]*>\s*\(<a[^>]*>\s*\)\?\([^<]*\).*/\n\2/; p; }'\
-		-e '/<!-- GRADE  -->/{n;N;N;N;N; s/^.*\s\s*\(.*\)<span[^>]*>\(\(\/[^<]*\)<.*\)\?.*$/Grade: \1\3/; p; }'\
-		-e '/class="grade-label">\(Median\|Average\)/{ s/^\s*\([^<]*\)<span[^>]*>\([^<]*\)<.*$/\2: \1/; p; }'\
-		-e '/<!-- BEGIN INFO -->/{n;N; s/.*<span class="timestamp">\([^>]*\)<.*/\1/; p; }'\
+		-e '/<!-- Title -->/{ :a; N; /<\/div>/!ba; s/\s*<[^>]*>\s*//g; s/.*/\n&/; p; }'\
+		-e '/<!-- BEGIN INFO -->/{ :b; N; /<!-- END INFO -->/!bb; s/\s*<[^>]*>\s*//g; /./p; }'\
+		-e '/<!-- GRADE [^ ]* -->/{ :c; N; /grade-label/!bc; s/\s*\(.*\)<span class="grade-label">\([^<]*\).*/\2: \1/g; s/\(: \)\?\s*<[^>]*>\s*/\1/g; p; }'\
 		| reverse_paragraphs
 }
 
