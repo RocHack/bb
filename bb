@@ -657,7 +657,28 @@ tac() {
 
 # utility for processing grades output
 reverse_paragraphs() {
-	sed '/./{H;d;};x;s/\n/={NL}=/g' | tac | sed '1s/={NL}=//;s/={NL}=/\n/g'
+	sed '/./{H;$!d;};x;s/\n/={NL}=/g' | tac | sed '1s/={NL}=//;s/={NL}=/\n/g'
+}
+
+# shift headings down so that when the paragraphs are reversed, the headings
+# preceed the paragraphs that they preceeded in the input
+shift_headings() {
+	sed '1,3 {
+		/./!d;
+	}
+	/^# /{
+		s/^# //;
+		x;
+		/./p;
+		s/./-/g;
+	}
+	${
+		p;
+		i
+		g;
+		p;
+		s/./-/g;
+	}'
 }
 
 # Look up your grades for a course
@@ -687,6 +708,10 @@ bb_grades() {
 	authenticate
 
 	bb_request "$course_grades_path$cid" | sed -n -f <(cat <<-SED
+		/<h3 class="section-title">/{
+			s/.*<h3[^>]*>\([^<]*\).*/\n# \1/;
+			p;
+		}
 		/<div class="grade-item[ "]/{
 			h;
 			i
@@ -731,7 +756,7 @@ bb_grades() {
 			/./p;
 		}
 	SED
-	) | reverse_paragraphs
+	) | shift_headings | reverse_paragraphs
 }
 
 # command: help
