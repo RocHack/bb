@@ -704,6 +704,22 @@ bb_grades() {
 			s/\(: \)\?\s*<[^>]*>\s*/\1/g;
 			p;
 		}
+		/studentGradesCommentPreview/{
+			:d; N; /<\/div>/!bd;
+			h; n;
+			:e; /value=".*"/bf; N; be; :f;
+			/Comments/d;
+			s/\s*<input[^>]* value="\([^"]*\)"[^>]*>\s*/\1: /;
+			G;
+			/<span class='extra-description'/{
+				h; s/<span class='extra-description'>[^<]*//;
+				s/\(: \)\?\s*<[^>]*>/\1/g;
+				/: ./p;
+				g; s/.*<span class='extra-description'>\([^<]*\).*/\1/;
+			}
+			s/\(: \)\?\s*<[^>]*>/\1/g;
+			/./p;
+		}
 	SED
 	) | reverse_paragraphs
 }
