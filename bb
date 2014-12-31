@@ -659,9 +659,9 @@ reverse_paragraphs() {
 	N;ba
 	:b
 	G;h;d;:c
-	p;i\
-\
-
+	s/$/\
+/
+	p
 	g;s/\n*$//'
 }
 
@@ -678,9 +678,9 @@ shift_headings() {
 		s/./-/g
 	}
 	${
+		s/$/\
+/
 		p
-		i\
-\
 
 		g
 		p
@@ -716,16 +716,14 @@ bb_grades() {
 
 	bb_request "$course_grades_path$cid" | sed -n -e '
 		/<h3 class="section-title">/{
-			s/.*<h3[^>]*>\([^<]*\).*/# \1/
-			i\
-\
-
+			s/.*<h3[^>]*>\([^<]*\).*/\
+# \1/
 			p
 		}
 		/<div class=.grade-item/{
 			h
-			i\
-\
+			s/.*//
+			p
 
 		}
 		/<!-- Grade  -->/{
