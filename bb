@@ -740,19 +740,32 @@ bb_grades() {
 			p;
 		}
 		/studentGradesCommentPreview/{
+			# get content string
 			:d; N; /<\/div>/!bd;
+			# save content for later
 			h; n;
+			# get type (e.g. Description)
 			:e; /value=".*"/bf; N; be; :f;
+			# skip comment type
 			/Comments/d;
+			# get the type and put a colon after it
 			s/\s*<input[^>]* value="\([^"]*\)"[^>]*>\s*/\1: /;
+			# paste the content after the type and colon
 			G;
+			# if there is an extra description, parse it
 			/<span class=.extra-description./{
+				# save extra desc for later. strip it out
 				h; s/<span class=.extra-description.>[^<]*//;
+				# remove tags and spaces but leave space after colon
 				s/\(: \)\?\s*<[^>]*>/\1/g;
+				# print if it has content
 				/: ./p;
+				# bring back the extra description and print it
 				g; s/.*<span class=.extra-description.>\([^<]*\).*/\1/;
 			}
+			# strip tags and whitespace
 			s/\(: \)\?\s*<[^>]*>/\1/g;
+			# print what we have if it exists
 			/./p;
 		}
 	' | shift_headings | reverse_paragraphs
