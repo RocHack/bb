@@ -650,34 +650,41 @@ usage_grades() {
 	exit 1
 }
 
-# reverse lines
-tac() {
-	sed '1!G;h;$!d'
-}
-
 # utility for processing grades output
 reverse_paragraphs() {
-	sed '/./{H;$!d;};x;s/\n/={NL}=/g' | tac | sed '1s/={NL}=//;s/={NL}=/\n/g'
+	sed ':a
+	/^$/n
+	/\n$/bb
+	$bc
+	N;ba
+	:b
+	G;h;d;:c
+	p;i\
+\
+
+	g;s/\n*$//'
 }
 
 # shift headings down so that when the paragraphs are reversed, the headings
 # preceed the paragraphs that they preceeded in the input
 shift_headings() {
 	sed '1,3 {
-		/./!d;
+		/./!d
 	}
 	/^# /{
-		s/^# //;
-		x;
-		/./p;
-		s/./-/g;
+		s/^# //
+		x
+		/./p
+		s/./-/g
 	}
 	${
-		p;
-		i
-		g;
-		p;
-		s/./-/g;
+		p
+		i\
+\
+
+		g
+		p
+		s/./-/g
 	}'
 }
 
@@ -709,66 +716,96 @@ bb_grades() {
 
 	bb_request "$course_grades_path$cid" | sed -n -e '
 		/<h3 class="section-title">/{
-			s/.*<h3[^>]*>\([^<]*\).*/\n# \1/;
-			p;
+			s/.*<h3[^>]*>\([^<]*\).*/# \1/
+			i\
+\
+
+			p
 		}
-		/<div class="grade-item[ "]/{
-			h;
-			i
+		/<div class=.grade-item/{
+			h
+			i\
+\
+
 		}
 		/<!-- Grade  -->/{
-			:1; N; /<\/div>/!b1;
-			s/\s*<[^>]*>\s*//g;
-			s/.*/Grade: &/;
-			h;
+			:1
+			N
+			/<\/div>/!b1
+			s/\n*[[:blank:]]*<[^>]*>\n*[[:blank:]]*//g
+			s/.*/Grade: &/
+			h
 		}
 		/<!-- Title -->/{
-			:a; N; /<\/div>/!ba;
-			s/\s*<[^>]*>\s*//g;
-			p;
-			g; /<div/!p;
+			:a
+			N
+			/<\/div>/!ba
+			s/\n*[[:blank:]]*<[^>]*>\n*[[:blank:]]*//g
+			p
+			g
+			/<div/!p
 		}
-		/<div class="info">/{
-			:b; N; /<\/div>/!bb;
-			s/\s*<[^>]*>\s*//g;
-			/./p;
+		/<div class="info>>/{
+			:b
+			N
+			/<\/div>/!bb
+			s/\n*[[:blank:]]*<[^>]*>\n*[[:blank:]]*//g
+			/./p
 		}
 		/<!-- GRADE [^ ]* -->/{
-			:c; N; /grade-label/!bc;
-			s/\s*\(.*\)<span class="grade-label">\([^<]*\).*/\2: \1/g;
-			s/\(: \)\?\s*<[^>]*>\s*/\1/g;
-			p;
+			:c
+			N
+			/grade-label/!bc
+			s/\n*[[:blank:]]*\(.*\)<span class=.grade-label.>\([^<]*\).*/\2: \1/g
+			s/<[^>]*>\(\n*[[:blank:]]*\)*//g
+			p
 		}
-		/studentGradesCommentPreview/{
+
+		/studentGradesCommentPreview/ {
 			# get content string
-			:d; N; /<\/div>/!bd;
+			:d
+			N
+			/<\/div>/!bd
 			# save content for later
-			h; n;
+			h
+			n
+
 			# get type (e.g. Description)
-			:e; /value=".*"/bf; N; be; :f;
+			:e
+			/value=".*./bf
+			N
+			be
+			:f
+
 			# skip comment type
 			/Comments/d;
+
 			# get the type and put a colon after it
-			s/\s*<input[^>]* value="\([^"]*\)"[^>]*>\s*/\1: /;
+			s/[[:blank:]]*<input[^>]* value=.\([^\"]*\).[^>]*>/\1: /;
 			# paste the content after the type and colon
-			G;
+			G
+
 			# if there is an extra description, parse it
 			/<span class=.extra-description./{
 				# save extra desc for later. strip it out
-				h; s/<span class=.extra-description.>[^<]*//;
+				h
+				s/<span class=.extra-description.>[^<]*//
 				# remove tags and spaces but leave space after colon
-				s/\(: \)\?\s*<[^>]*>/\1/g;
+				s/\n*[[:blank:]]*<[^>]*>\n*[[:blank:]]*//g
 				# print if it has content
-				/: ./p;
+				/: ./p
 				# bring back the extra description and print it
-				g; s/.*<span class=.extra-description.>\([^<]*\).*/\1/;
+				g
+				s/.*<span class=.extra-description.>\([^<]*\).*/\1/
 			}
+
 			# strip tags and whitespace
-			s/\(: \)\?\s*<[^>]*>/\1/g;
+			s/\n*[[:blank:]]*<[^>]*>//g
 			# print what we have if it exists
-			/./p;
+			/./p
 		}
 	' | shift_headings | reverse_paragraphs
+	echo
 }
 
 # command: help
