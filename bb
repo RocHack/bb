@@ -33,6 +33,7 @@ authenticated=
 
 verbose_mode=
 cookie_jar_checked=
+curl_installed=
 
 # exit codes
 EX_USAGE=64
@@ -46,6 +47,7 @@ bb_request() {
 	fi
 	shift
 	check_cookies
+    check_curl
 	curl -s -b "$cookie_jar" -c "$cookie_jar" "$url" $@ 2>&-
 }
 
@@ -68,6 +70,17 @@ parse_netrc() {
 	cred=`sed -n "/machine $bb_server/,/machine /p" $netrc`
 	user_id=`sed -n 's/.*login \([^ ]*\).*/\1/p' <<< $cred`
 	password=`sed -n 's/.*password \([^ ]*\).*/\1/p' <<< $cred`
+}
+
+# Check to see if curl is installed for current user
+check_curl() {
+    if [[-z curl_installed]]; then
+        which curl && curl_installed=1
+        if[[ -z curl_installed ]]; then
+            echo "'curl' is not installed, install curl" >&2
+            exit 1
+        fi
+    fi
 }
 
 # Check the cookie file and create it if necessary
