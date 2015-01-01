@@ -1,0 +1,18 @@
+cat toParse.txt | \
+sed -n -e '
+    # check for the color only documents seem to have
+    /style="color:#000000;"/{
+        # eliminate the cruft around the course name
+        s_.*<span[^>]*>\(.*\)</span>.*_\1_p
+        :loop
+        # loop until document details are found
+        /.*<div class="details" >.*/!{
+            n
+            b loop
+        }
+        # get the link out of the doc details
+        /.*<div class="details" >.*/{
+            n
+            s_.*<a href="\([^"]*\)"[^>]*>.*_\1_p
+        }
+    }'

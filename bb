@@ -189,6 +189,7 @@ bb_help() {
 	echo '    help       Get this help message'
 	echo '    courses    List your courses'
 	echo '    grades     Get grades for a course'
+	echo '    materials  List or download course materials'
 	echo '    submit     Submit an assignment for a course'
 	echo '    balance    Get your declining/Uros balance'
 	echo '    bill       Get your current tuition bill'
@@ -400,8 +401,31 @@ get_assignments2() {
 	# Follow links like "Laboratory Reports" and "Projects"
 	echo "$course_materials" | sed -n 's/.*<a href="\(\/[^"]*listContent\.jsp?course_id=[0-9_]*[^"]*\)">.*/\1/p' | \
 	while read assignment_path; do
-		get_assignments2 $assignment_path
+		get_assignments2 $assignment_path $2
 	done
+
+	# If materials wanted, return them
+	if [[ $2 == '-m' ]]; then
+		echo "$course_materials" | \
+		sed -n -e '
+			# check for the color only documents seem to have
+			/style="color:#000000;"/{
+				# eliminate the cruft around the course name
+				s_.*<span[^>]*>\(.*\)</span>.*_\1_p
+				:loop
+				# loop until document details are found
+				/.*<div class="details" >.*/!{
+					n
+					b loop
+				}
+				# get the link out of the doc details
+				/.*<div class="details" >.*/{
+					n
+					s_.*<a href="\([^"]*\)"[^>]*>.*_\1_p
+				}
+			}'
+		return 1
+	fi
 
 	# Print the assignments on this page
 	echo "$course_materials" | sed -n 's/.*<a href="\([a-z/]*uploadAssignment[^"]*\)"><[^>]*>\([^<]*\).*/\1 \2/p'
@@ -417,7 +441,8 @@ get_assignments() {
 	local course_materials_path=`bb_request $course_path -L | \
 		sed -n '/Course Material/ s/.*<a href="\([^"]*\)".*/\1/p'`
 
-	get_assignments2 $course_materials_path
+	# $2 is a flag for returning course materials
+	get_assignments2 $course_materials_path $2
 }
 
 # Get an assignment for a given course path, prompting the user if necessary.
@@ -1144,6 +1169,79 @@ bb_grades() {
 	echo
 }
 
+usage_materials() {
+	echo Usage: bb materials [-v] [\<course\>] [\<document\>] >&2
+	exit 1
+}
+
+# Look up or download course materials
+get_materials() {
+	local query=
+	local course=
+
+	# Process arguments
+	for arg; do
+		if [[ $arg == '-v' ]]; then true
+		elif [[ $arg == '-h' ]]; then usage_materials
+		elif [[ -z $course ]]; then course="$arg"
+		elif [[ -z $query ]]; then query="$arg"
+		else query="$query $arg"
+		fi
+	done
+
+	# Establish session
+	authenticate
+
+	# Select the course interactively and get the course path
+	get_course $course
+	course_id=${COURSE%% *}
+
+	# Get all the materials for the given course
+	all_materials=`get_assignments $course_id -m | sed -n \
+		-e '/span/!{ s/\(.*\)/	\1/; p; }'\
+		-e '/span/{ s/\(.*\)<\/span>/\1 [dir]/; p; }'`
+
+	# With materials, determine target document
+	materials=`echo "$all_materials" | sed -e '/^	\//d'`
+	materials=`grep -i "$query" <<< "$materials"`
+
+	# Routes are anything without a first dash
+	routes=`echo "$all_materials" | sed -e '/^	//!{ d; }'`
+	num_matches=`echo "$materials" | wc -l | sed -e 's/^[ \t]*//'`
+	echo "Found $num_matches item(s)."
+
+	# Split strings at newline for select menu
+	OIFS=$IFS
+	IFS=$'\n'
+
+	# Set the prompt string - copied from courses way
+	OPS3=$PS3
+	PS3='Choose a material to download: '
+
+	# Prompt user to choose an item
+	if [[ $num_matches -ne 1 ]]; then
+		select material in $materials; do
+			if [[ -n $material ]]; then # Put back the material?
+				material=`grep -F "$material" <<<"$materials"`
+				break
+			fi
+		done
+	fi
+
+	# Restore environment.
+	IFS=$OIFS
+	PS3=$OPS3
+
+	# Figure out the location of doc, download
+	url='todo'
+
+	# Option to just dump everything?
+
+	# return desired materials
+	echo "Target material: $material"
+	echo "Target route: $url"
+}
+
 # command: help
 usage_help() {
 	bb_help
@@ -1178,5 +1276,6 @@ case "$cmd" in
 	payments) bb_payments $@;;
 	pay) bb_pay $@;;
 	grades) bb_grades "$@";;
+	materials) get_materials "$@";;
 	*) invalid_command $cmd;;
 esac
