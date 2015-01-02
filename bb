@@ -74,10 +74,16 @@ parse_netrc() {
 
 # Check to see if curl is installed for current user
 check_curl() {
-    if [[-z curl_installed]]; then
+    # check if curl already verified
+    if [[ -z $curl_installed ]]; then
+
+        # if curl installed, set 1
         which curl && curl_installed=1
-        if[[ -z curl_installed ]]; then
-            echo "'curl' is not installed, install curl" >&2
+
+        # if curl_installed is still unset, not installed, exit
+        if [[ -z $curl_installed ]]; then
+            echo "'curl' is not installed, install curl before running bb." >&2
+            echo "info: http://curl.haxx.se/docs/manpage.html" >&2
             exit 1
         fi
     fi
