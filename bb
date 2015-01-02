@@ -47,7 +47,7 @@ bb_request() {
 	fi
 	shift
 	check_cookies
-    check_curl
+	check_curl
 	curl -s -b "$cookie_jar" -c "$cookie_jar" "$url" $@ 2>&-
 }
 
@@ -74,19 +74,19 @@ parse_netrc() {
 
 # Check to see if curl is installed for current user
 check_curl() {
-    # check if curl already verified
-    if [[ -z $curl_installed ]]; then
+	# check if curl already verified
+	if [[ -z $curl_installed ]]; then
 
-        # if curl installed, set 1
-        which curl && curl_installed=1
+		# if curl installed, set 1
+		which curl && curl_installed=1
 
-        # if curl_installed is still unset, not installed, exit
-        if [[ -z $curl_installed ]]; then
-            echo "'curl' is not installed, install curl before running bb." >&2
-            echo "info: http://curl.haxx.se/docs/manpage.html" >&2
-            exit 1
-        fi
-    fi
+		# if curl_installed is still unset, not installed, exit
+		if [[ -z $curl_installed ]]; then
+			echo "'curl' is not installed, install curl before running bb." >&2
+			echo "info: http://curl.haxx.se/docs/manpage.html" >&2
+			exit 1
+		fi
+	fi
 }
 
 # Check the cookie file and create it if necessary
@@ -557,8 +557,8 @@ bb_balance() {
 	uros=${part2%%,*}
 
 	if [[ $print_both ]]; then
-        printf "decl:\t\$ $declining\n"
-        printf "uros:\t\$ $uros\n"
+		printf "decl:\t\$ $declining\n"
+		printf "uros:\t\$ $uros\n"
 	elif [[ $print_declining ]]; then echo $declining
 	elif [[ $print_uros ]]; then echo $uros
 	fi
