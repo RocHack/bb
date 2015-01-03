@@ -70,6 +70,15 @@ parse_netrc() {
 	password=`sed -n 's/.*password \([^ ]*\).*/\1/p' <<< $cred`
 }
 
+# Check to see if curl is installed for current user
+check_curl() {
+	type curl >/dev/null 2>&1 || {
+		echo "'curl' is not installed, install curl before running bb." >&2
+		echo "info: http://curl.haxx.se/docs/manpage.html" >&2
+		exit 1
+	}
+}
+
 # Check the cookie file and create it if necessary
 check_cookies() {
 	# check cookie file
@@ -538,8 +547,8 @@ bb_balance() {
 	uros=${part2%%,*}
 
 	if [[ $print_both ]]; then
-        printf "decl:\t\$ $declining\n"
-        printf "uros:\t\$ $uros\n"
+		printf "decl:\t\$ $declining\n"
+		printf "uros:\t\$ $uros\n"
 	elif [[ $print_declining ]]; then echo $declining
 	elif [[ $print_uros ]]; then echo $uros
 	fi
@@ -818,6 +827,10 @@ if [[ $# -lt 1 ]]
 then
 	usage_main
 fi
+
+# check if user has curl
+
+check_curl
 
 for arg; do
 	if [[ $arg == '-v' ]]; then
