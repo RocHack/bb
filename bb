@@ -33,10 +33,12 @@ authenticated=
 
 verbose_mode=
 cookie_jar_checked=
-curl_installed=
 
 # exit codes
 EX_USAGE=64
+
+# check if user has curl
+check_curl
 
 bb_request() {
 	# Allow path or full url
@@ -47,7 +49,6 @@ bb_request() {
 	fi
 	shift
 	check_cookies
-	check_curl
 	curl -s -b "$cookie_jar" -c "$cookie_jar" "$url" $@ 2>&-
 }
 
@@ -74,19 +75,11 @@ parse_netrc() {
 
 # Check to see if curl is installed for current user
 check_curl() {
-	# check if curl already verified
-	if [[ -z $curl_installed ]]; then
-
-		# if curl installed, set 1
-		which curl && curl_installed=1
-
-		# if curl_installed is still unset, not installed, exit
-		if [[ -z $curl_installed ]]; then
-			echo "'curl' is not installed, install curl before running bb." >&2
-			echo "info: http://curl.haxx.se/docs/manpage.html" >&2
-			exit 1
-		fi
-	fi
+	type curl >/dev/null 2>&1 || {
+		echo "'curl' is not installed, install curl before running bb." >&2
+		echo "info: http://curl.haxx.se/docs/manpage.html" >&2
+		exit 1
+	}
 }
 
 # Check the cookie file and create it if necessary
