@@ -37,9 +37,6 @@ cookie_jar_checked=
 # exit codes
 EX_USAGE=64
 
-# check if user has curl
-check_curl
-
 bb_request() {
 	# Allow path or full url
 	if [[ ${1:0:1} == "/" ]]; then
@@ -830,6 +827,10 @@ if [[ $# -lt 1 ]]
 then
 	usage_main
 fi
+
+# check if user has curl
+
+check_curl
 
 for arg; do
 	if [[ $arg == '-v' ]]; then
