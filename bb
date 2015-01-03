@@ -406,6 +406,7 @@ get_assignments2() {
 
 	# If materials wanted, return them
 	if [[ $2 == '-m' ]]; then
+        [[ $verbose_mode ]] && echo "$course_materials"
 		echo "$course_materials" | \
 		sed -n -e '
 			# check for the color only documents seem to have
@@ -414,14 +415,16 @@ get_assignments2() {
 				s_.*<span[^>]*>\(.*\)</span>.*_\1_p
 				:loop
 				# loop until document details are found
-				/.*<div class="details" >.*/!{
+				/.*<div[^>]*class="details".*/!{
 					n
 					b loop
 				}
 				# get the link out of the doc details
-				/.*<div class="details" >.*/{
+				/.*<div[^>]*class="details".*/{
 					n
-					s_.*<a href="\([^"]*\)"[^>]*>.*_\1_p
+					N
+					N
+					s_.*<a[^>]*href="\([^"]*\)"[^>]*>.*_\1_p
 				}
 			}'
 		return 1
@@ -1201,14 +1204,14 @@ get_materials() {
 		-e '/span/!{ s/\(.*\)/	\1/; p; }'\
 		-e '/span/{ s/\(.*\)<\/span>/\1 [dir]/; p; }'`
 
-	# With materials, determine target document
-	materials=`echo "$all_materials" | sed -e '/^	\//d'`
-	materials=`grep -i "$query" <<< "$materials"`
+	# With materials, determine target document (remove routes)
+	materials=`echo "$all_materials" | sed -e '/^	\//{ d; }'`
 
-	# Routes are anything without a first dash
-	routes=`echo "$all_materials" | sed -e '/^	//!{ d; }'`
+	# Routes are anything with a first dash, exclude
+	materials=`grep -i "$query" <<< "$materials"`
 	num_matches=`echo "$materials" | wc -l | sed -e 's/^[ \t]*//'`
-	echo "Found $num_matches item(s)."
+	[[ $num_matches -gt 1 ]] && echo "Found $num_matches materials."
+	[[ $verbose_mode ]] && echo "$all_materials"
 
 	# Split strings at newline for select menu
 	OIFS=$IFS
@@ -1219,13 +1222,20 @@ get_materials() {
 	PS3='Choose a material to download: '
 
 	# Prompt user to choose an item
-	if [[ $num_matches -ne 1 ]]; then
+	if [[ $num_matches -gt 1 ]]; then
 		select material in $materials; do
-			if [[ -n $material ]]; then # Put back the material?
-				material=`grep -F "$material" <<<"$materials"`
-				break
-			fi
+			break
 		done
+
+	# If just one matching item, autoselect
+	elif [[ $num_matches -eq 1 ]] && ! [[ $materials =~ ^Course\ Materials\ \[dir\]$ ]]; then
+		material="$materials"
+
+	else # If no items matched, done
+		IFS=$OIFS
+		PS3=$OPS3
+		echo "No materials found for current course."
+		return 1
 	fi
 
 	# Restore environment.
@@ -1233,13 +1243,29 @@ get_materials() {
 	PS3=$OPS3
 
 	# Figure out the location of doc, download
-	url='todo'
+	url=`echo "$all_materials" | sed -n -e "/$material/{ n; s/^[	]// p; }"`
+	material=`echo "$material" | sed -e 's/^[ \t]*//'`
 
-	# Option to just dump everything?
+	# TODO: Option to just dump everything, or all contents in a dir?
 
-	# return desired materials
-	echo "Target material: $material"
-	echo "Target route: $url"
+	# Return desired materials - s for starting link
+	echo Target material: $material
+	s_url="$bb_url$url"
+
+	# Get the actual path of the document (for naming)
+	# t for temp link, r for redirected link
+	r_url=`bb_request -i "$s_url" 2>&1 | sed -ne "s/.*\(content-rid.*\)/\1/p"`
+	t_url=`echo "$p_url" | sed -ne "s/^\(.*\)content-rid.*/\1/p"`
+
+	# Get what the file type is from its name (dirty)
+	full_url="$t_url$r_url" # resolved, full path
+	[[ $verbose_mode ]] && echo Found material @ $full_url
+	filename=$(bb_request -OJw '%{filename_effective}' "$full_url")
+
+	# Write the desired file to local file system
+	filename=`echo "$filename" | sed 's/$//'`
+	bb_request -L "$s_url" > $filename
+	echo Downloaded $filename
 }
 
 # command: help
