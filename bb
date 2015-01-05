@@ -23,6 +23,7 @@ quikpay_root='https://quikpayasp.com'
 quikpay_auth_path='/rochester/tuition/payer.do'
 quikpay_history_path='/rochester/qp/history/index.do'
 quikpay_current_statement_path='/rochester/qp/ebill/currentStatementDispatcher.do'
+quikpay_payment_path='/rochester/qp/epay/index.do'
 
 cookie_jar=~/.bbsession
 
@@ -620,6 +621,67 @@ bb_payments() {
 	}'
 }
 
+usage_pay() {
+	echo "Usage: bb pay [-vf] [-m <payment_method>] [<amount>]" >&2
+	exit 1
+}
+
+get_payment_profiles() {
+	quikpay_request $quikpay_payment_path |\
+		sed -n -e '/<select name="method"/{
+	# get stored profiles
+	s/.*<option[^<]*>Or use a stored profile[^<]*<\/option>//
+	# begin repeat
+	:a
+	# done
+	/<option/!q
+	h
+	# extract and print the first item
+	s/<option[^>]* value="\([^"]*\)"[^>]*>[^(]*(\([^<]*\))[^<]*<\/option>.*/\1 \2/
+	s/ /\\ /
+	p
+	g
+	# remove the first item
+	s/<option[^>]*>[^<]*<\/option>//
+	# end repeat
+	ba
+	}'
+}
+
+# command: pay
+# Make a tuition payment
+bb_pay() {
+	local opt=
+	local amount=
+	local method=
+
+	for arg; do
+		if [[ $arg == '-v' ]]; then true
+		elif [[ $arg == '-h' ]]; then usage_pay
+		elif [[ $arg == '-m' ]]; then opt=method
+		elif [[ $opt == method ]]; then method="$arg"; opt=
+		elif [[ -z "$amount" ]]; then amount="$arg"
+		else echo Unknown argument "$arg" >&2; exit $EX_USAGE
+		fi
+	done
+
+	# if no payment profile given, prompt user to pick one
+	if [[ -z "$method" ]]; then
+		select method in $(get_payment_profiles); do
+			[[ -n "$method" ]] && break
+		done
+	fi
+
+	# prompt for payment amount if not given as argument
+	while [[ -z "$amount" ]]
+	do
+		read -p 'Payment amount: ' amount || exit
+	done
+
+	echo method: $method. amount: $amount
+}
+
+
 usage_bill() {
 	echo Usage: bb bill [-v] [--pdf statement.pdf] >&2
 	exit 1
@@ -869,6 +931,7 @@ case "$cmd" in
 	balance) bb_balance $@;;
 	bill) bb_bill $@;;
 	payments) bb_payments $@;;
+	pay) bb_pay $@;;
 	grades) bb_grades "$@";;
 	*) invalid_command $cmd;;
 esac
