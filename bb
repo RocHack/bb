@@ -706,6 +706,17 @@ parse_payment_profiles() {
 	}'
 }
 
+parse_quikpay_error() {
+	sed -n '/etcErrorMessage/{
+		:a
+		N
+		/<\/p>/!ba
+		# extract error message
+		s/.*<p>\([^<]*\)<\/p>.*/\1/p
+		q
+	}'
+}
+
 # command: pay
 # Make a tuition payment
 bb_pay() {
@@ -717,6 +728,8 @@ bb_pay() {
 	local temp=
 	local confirm=
 	local batch_id=
+	local confirm_num=
+	local result_msg=
 
 	for arg; do
 		if [[ $arg == '-v' ]]; then true
@@ -745,12 +758,17 @@ bb_pay() {
 	done
 
 	# prepare for confirmation
-	echo
 	quikpay_request $quikpay_payment_confirm_path -L \
 		-F "paymentAmount[0].amount=$amount"\
 		-F "method=$method"\
 		-F "$special"\
 		| sed -n '
+	# begin with blank line
+	1{
+		s/.*//
+		p
+	}
+	# get labels and values
 	/<td class="\(summary\|io\)\(Label\|Value\)/{
 		:a
 		N
@@ -776,10 +794,10 @@ bb_pay() {
 		s/  */ /g
 		s/^ *\| *$//
 		s/\([\n\r]*\) */\1/
+		G
 		p
 	}'
 
-	echo
 	until [[ $confirm ]]; do
 		read -p 'Confirm this payment? [y/n] ' confirm
 		case "$confirm" in
@@ -789,14 +807,50 @@ bb_pay() {
 		esac
 	done
 
-	batch_id=$(quikpay_request $quikpay_payment_submit_path -LF "$special"\
-		| sed -n 's/.* name="batchId" value="\([^"]*\)">.*/\1/p')
+	quikpay_request $quikpay_payment_submit_path -LF "$special" > "$temp"
 
-	echo Submitting payment ID $batch_id...
+	batch_id=$(sed -ne 's/.* name="batchId" value="\([^"]*\)">.*/\1/p' "$temp")
+	if [[ -z "$batch_id" ]]; then
+		echo "Unable to find payment ID"
+		parse_quikpay_error <"$temp"
+		rm "$temp"
+		return 1
+	fi
+
+	echo Processing payment ID $batch_id...
 	quikpay_request $quikpay_payment_process_path -L \
 		-F "$special"\
-		-F "batchID=$batch_id" \
-		-F "dummy="
+		-F "batchId=$batch_id" \
+		-F "dummy=" > "$temp"
+	confirm_num=$(sed <"$temp" -n '
+	/epay_include_PaymentReceiptElement_confirmNumber/{
+		:a
+		N
+		/<\/tr>/!ba
+		# extract confirmation number
+		s/.*<span class=attentionText>\([^<]*\)<\/span>.*/\1/p
+		q
+	}')
+	result_msg=$(sed <"$temp" -n '
+	/epay_include_PaymentReceiptElement_resultMessage/{
+		:a
+		N
+		/<\/tr>/!ba
+		s/[[:blank:]]*<[^>]*>[[:blank:]]*//g
+		p
+		q
+	}')
+
+	if [[ -z "$confirm_num" ]]; then
+		echo "Payment failed."
+		parse_quikpay_error <"$temp"
+	else
+		echo $result_msg
+		echo "Confirmation number: $confirm_num"
+	fi
+
+	rm $temp
+	[[ -n $confirm_num ]]
 }
 
 
