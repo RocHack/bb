@@ -752,7 +752,7 @@ bb_grades() {
 			g
 			/<div/!p
 		}
-		/<div class="info>>/{
+		/<div class="info">/{
 			:b
 			N
 			/<\/div>/!bb
