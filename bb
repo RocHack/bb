@@ -200,6 +200,65 @@ invalid_command() {
 	exit 127
 }
 
+# Pick an item out of a list.
+# Usage: pick_item "$prompt" "$items" "$item_query"
+# Finds a line in $items matching $item_query, or the user's input.
+# Writes result to variable ITEM
+#
+pick_item() {
+	local items=
+	local prompt=${1:='Choose an item'}
+	local all_items="$2"
+	local search="$3"
+	local num_matches=0
+
+	# If the user specified no item, let them pick one now.
+	if [[ -z $search ]]; then
+		# List all items
+		items="$all_items"
+	else
+		# Find items matching the search string
+		items=$(grep -i "$search" <<< "$all_items")
+
+		if [[ -z $items ]]; then
+			# If 0 items match, let the user pick from all the items.
+			echo "Found no items matching '$search'"
+			items="$all_items"
+		else
+			# If 1 item matches, use that one.
+			num_matches=$(sed -n '$=' <<< "$items")
+			if [[ $num_matches -eq 1 ]]; then
+				echo Found $items
+				ITEM="$items"
+				return
+			else
+				# If >1 items match, let the user pick from the matches.
+				echo Found $num_matches items.
+			fi
+		fi
+	fi
+
+	# Split strings at newline for select menu
+	OIFS=$IFS
+	IFS=$'\n'
+
+	# Set the prompt string
+	OPS3=$PS3
+	PS3="$prompt: "
+
+	select item in $items; do
+		ITEM="$item"
+		[[ -n $item ]] && break
+	done
+
+	# Restore environment
+	IFS=$OIFS
+	PS3=$OPS3
+
+	# Return status
+	[[ -n "$item" ]]
+}
+
 # command: submit
 
 usage_submit() {
@@ -637,9 +696,7 @@ get_payment_profiles() {
 	/<option/!q
 	h
 	# extract and print the first item
-	s/<option[^>]* value="\([^"]*\)"[^>]*>[^(]*(\([^<]*\))[^<]*<\/option>.*/\1 \2/
-	s/ /\\ /
-	p
+	s/<option[^>]* value="\([^"]*\)"[^>]*>[^(]*(\([^<]*\))[^<]*<\/option>.*/\1 (\2)/p
 	g
 	# remove the first item
 	s/<option[^>]*>[^<]*<\/option>//
@@ -665,12 +722,11 @@ bb_pay() {
 		fi
 	done
 
-	# if no payment profile given, prompt user to pick one
-	if [[ -z "$method" ]]; then
-		select method in $(get_payment_profiles); do
-			[[ -n "$method" ]] && break
-		done
-	fi
+	pick_item 'Choose a payment profile'\
+		"$(get_payment_profiles)" "$method" || exit
+	method=$ITEM
+
+	# Trim profile name
 
 	# prompt for payment amount if not given as argument
 	while [[ -z "$amount" ]]
