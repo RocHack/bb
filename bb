@@ -24,7 +24,8 @@ quikpay_auth_path='/rochester/tuition/payer.do'
 quikpay_history_path='/rochester/qp/history/index.do'
 quikpay_current_statement_path='/rochester/qp/ebill/currentStatementDispatcher.do'
 quikpay_payment_path='/rochester/qp/epay/index.do'
-
+quikpay_payment_confirm_path='/rochester/qp/epay/submitAmountMethod.do'
+quikpay_payment_submit_path='/rochester/qp/epay/submitCheckECheckConfirmation.do'
 cookie_jar=~/.bbsession
 
 # login info will be filled from ~/.netrc or by prompting the user
@@ -685,9 +686,8 @@ usage_pay() {
 	exit 1
 }
 
-get_payment_profiles() {
-	quikpay_request $quikpay_payment_path |\
-		sed -n -e '/<select name="method"/{
+parse_payment_profiles() {
+	sed -n -e '/<select name="method"/{
 	# get stored profiles
 	s/.*<option[^<]*>Or use a stored profile[^<]*<\/option>//
 	# begin repeat
@@ -711,6 +711,11 @@ bb_pay() {
 	local opt=
 	local amount=
 	local method=
+	local methods=
+	local special=
+	local temp=
+	local confirm=
+	local batch_id=
 
 	for arg; do
 		if [[ $arg == '-v' ]]; then true
@@ -722,11 +727,15 @@ bb_pay() {
 		fi
 	done
 
-	pick_item 'Choose a payment profile'\
-		"$(get_payment_profiles)" "$method" || exit
-	method=$ITEM
+	temp=`mktemp /tmp/bbout.XXXXXX`
+	# get payment profiles and special form thing
+	quikpay_request $quikpay_payment_path | tee payments1.html > "$temp"
+	methods=$(parse_payment_profiles < "$temp")
+	special=$(sed -n -e '/qp_epay_AmountMethodForm/ s/.*type="hidden" name="\([^"]*\)" value="\([^"]*\)".*/\1=\2/p' < "$temp")
+	rm $temp
 
-	# Trim profile name
+	pick_item 'Choose a payment profile' "$methods" "$method" || exit
+	method=${ITEM%(*}
 
 	# prompt for payment amount if not given as argument
 	while [[ -z "$amount" ]]
@@ -734,7 +743,47 @@ bb_pay() {
 		read -p 'Payment amount: ' amount || exit
 	done
 
-	echo method: $method. amount: $amount
+	# prepare for confirmation
+	echo
+	quikpay_request $quikpay_payment_confirm_path -L \
+		-F "paymentAmount[0].amount=$amount"\
+		-F "method=$method"\
+		-F "$special"\
+		| sed -n '
+	/<td class="\(summary\|io\)\(Label\|Value\)/{
+		:a
+		N
+		/<\/td>/!ba
+		# add space
+		s/[\n\r[:blank:]]*<span class="attentionText">[\n\r[:blank:]]*/ /
+		# strip tags
+		s/[\n\r[:blank:]]*<[^>]*>[\n\r[:blank:]]*//g
+		# print in form "label: value"
+		x
+		/./{
+			G
+			s/[\n\r]/ /g
+			p
+			s/.*//
+			h
+		}
+	}'
+
+	echo
+	until [[ $confirm ]]; do
+		read -p 'Confirm this payment? [y/n] ' confirm
+		case "$confirm" in
+			n|N) echo 'Payment cancelled'; return 1;;
+			y|Y) break;;
+			*) echo -n; confirm=
+		esac
+	done
+
+	batch_id=$(quikpay_request $quikpay_payment_submit_path -LF "$special"\
+		| sed -n 's/.* name="batchId" value="\([^"]*\)">.*/\1/p')
+
+	echo payment not yet submitted
+	echo batch ID: $batch_id
 }
 
 
