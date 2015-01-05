@@ -769,31 +769,48 @@ bb_pay() {
 		p
 	}
 	# get labels and values
-	/<td class="\(summary\|io\)\(Label\|Value\)/{
-		:a
+	/<td class="summaryLabel"/blabel
+	/<td class="ioLabel"/blabel
+	/<td class="summaryValue"/bvalue
+	/<td class="ioValue"/bvalue
+	bz
+	:label
 		N
-		/<\/td>/!ba
+		/<\/td>/!blabel
+		s/<[^>]*>//g
+		y/\n/ /
+		s/^[ ]*//
+		s/[ ]*$//
+		h
+		bz
+	:value
+		N
+		/<\/td>/!bvalue
 		# add space
-		s/[\n\r[:blank:]]*<span class="attentionText">[\n\r[:blank:]]*/ /
 		# strip tags
-		s/[\n\r[:blank:]]*<[^>]*>[\n\r[:blank:]]*//g
+		#/0311/l
+		s/<[^>]*>//g
+		s///g
+		y/\n/ /
+		s/  */ /g
+		s/  *$//
+		s/^  *//
 		# print in form "label: value"
 		x
-		/./{
-			G
-			s/[\n\r]/ /g
-			p
-			s/.*//
-			h
-		}
-	}
+		G
+		s/\n\n*/ /g
+		p
+		s/.*//
+		h
+	:z
 	# print disclaimer
 	/epay_ECheckConfirmation_eCheckDisclaimer/{
 		N
-		s/[[:blank:]]*<[^>]*>[[:blank:]]*/ /g
+		s/<[^>]*>/ /g
 		s/  */ /g
-		s/^ *\| *$//
-		s/\([\n\r]*\) */\1/
+		s/^ //
+		s/\(\n\) /\1/
+		s/[ ]*$//
 		G
 		p
 	}'
