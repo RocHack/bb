@@ -707,12 +707,20 @@ parse_payment_profiles() {
 }
 
 parse_quikpay_error() {
-	sed -n '/etcErrorMessage/{
+	sed -n '
+	/<h1 class="pageTitle">/{
+		n
+		s///
+		s/^[ 	]*//p
+	}
+	/etcErrorMessage/{
 		:a
 		N
 		/<\/p>/!ba
 		# extract error message
-		s/.*<p>\([^<]*\)<\/p>.*/\1/p
+		y/\n	/   /
+		s/.*<p[^>]*> *//
+		s/ *<\/p>.*//p
 		q
 	}'
 }
