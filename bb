@@ -26,6 +26,7 @@ quikpay_current_statement_path='/rochester/qp/ebill/currentStatementDispatcher.d
 quikpay_payment_path='/rochester/qp/epay/index.do'
 quikpay_payment_confirm_path='/rochester/qp/epay/submitAmountMethod.do'
 quikpay_payment_submit_path='/rochester/qp/epay/submitCheckECheckConfirmation.do'
+quikpay_payment_process_path='/rochester/qp/epay/processPayment.do'
 cookie_jar=~/.bbsession
 
 # login info will be filled from ~/.netrc or by prompting the user
@@ -767,6 +768,15 @@ bb_pay() {
 			s/.*//
 			h
 		}
+	}
+	# print disclaimer
+	/epay_ECheckConfirmation_eCheckDisclaimer/{
+		N
+		s/[[:blank:]]*<[^>]*>[[:blank:]]*/ /g
+		s/  */ /g
+		s/^ *\| *$//
+		s/\([\n\r]*\) */\1/
+		p
 	}'
 
 	echo
@@ -782,8 +792,11 @@ bb_pay() {
 	batch_id=$(quikpay_request $quikpay_payment_submit_path -LF "$special"\
 		| sed -n 's/.* name="batchId" value="\([^"]*\)">.*/\1/p')
 
-	echo payment not yet submitted
-	echo batch ID: $batch_id
+	echo Submitting payment ID $batch_id...
+	quikpay_request $quikpay_payment_process_path -L \
+		-F "$special"\
+		-F "batchID=$batch_id" \
+		-F "dummy="
 }
 
 
