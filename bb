@@ -559,8 +559,13 @@ authenticate_quikpay() {
 	authenticate
 
 	# Get the auth token/form
-	auth_form=`bb_request $quikpay_token_path | \
-		sed -n '/name=.*value=/{ s/.*name="\([^"]*\)"\s*value=\("\?\)\([^">]*\)\2.*/\1=\3/; s/ /+/g; s/^/-d /; p; }'`
+	auth_form=$(bb_request $quikpay_token_path | sed -n '
+	/name=.*value=/{
+		s/.*name="\([^"]*\)"[[:blank:]]*value="*\([^">]*\).*/\1=\2/
+		s/ /+/g
+		s/^/-d /
+		p
+	}')
 
 	# Use the auth form to log in to quikpay
 	auth_url=$quikpay_root$quikpay_auth_path
@@ -592,10 +597,27 @@ quikpay_request() {
 # command: payments
 # Get tuition payment transaction history, in CSV format
 bb_payments() {
-	echo Confirmation Number,Date,Amount,Account,Payment Method,Payer
-	quikpay_request $quikpay_history_path |\
-		sed '/<td/,/\w/!d; /<td/d; s/^\s*//; s/\s*$//; /<img/d; /^$/d' |\
-		sed '$!N;N;N;N;N;N; s/\n/,/g'
+	quikpay_request $quikpay_history_path | sed -n '
+	/historyPaymentHistoryDetail/d
+	/<t[dh]/{
+		:a
+		n
+		/[^[:blank:]<]/!ba
+		s/^[[:blank:]]*//
+		s/<\/t[dh]>.*//
+		H
+	}
+	/<\/tr>/{
+		# output row
+		g
+		s/\n/,/g
+		s/^,//
+		s/<br>/ /g
+		p
+		# clear hold space
+		s/.*//
+		h
+	}'
 }
 
 usage_bill() {
@@ -628,9 +650,9 @@ bb_bill() {
 	else
 		# Extract the statement text
 		quikpay_request $quikpay_current_statement_path -L |\
-			sed -n -e '/ElementLabel/{n; s/^\s*//; s/\s*$/:/; p; }'\
-			-e '/ElementValue/{n;N;N; s/\s*<.*$//'\
-			-e 's/^\s*\(.*\)\s*$/\1/; s/\s*$//; p; }' |\
+			sed -n -e '/ElementLabel/{n; s/^[\r\n[:blank:]]*//; s/[\r\n[:blank:]]*$/:/; p; }'\
+			-e '/ElementValue/{n;N;N; s/[\r\n[:blank:]]*<.*$//'\
+			-e 's/^[\r\n[:blank:]]*\(.*\)[\r\n[:blank:]]*$/\1/; s/[\r\n[:blank:]]*$//; p; }' |\
 			sed '/:/N;s/\n/ /'
 	fi
 
