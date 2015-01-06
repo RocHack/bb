@@ -683,7 +683,7 @@ bb_payments() {
 }
 
 usage_pay() {
-	echo "Usage: bb pay [-vf] [-m <payment_method>] [<amount>]" >&2
+	echo "Usage: bb pay [-v] [-m <payment_method>] [<amount>]" >&2
 	exit 1
 }
 
