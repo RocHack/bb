@@ -767,9 +767,9 @@ bb_pay() {
 
 	# prepare for confirmation
 	quikpay_request $quikpay_payment_confirm_path -L \
-		-F "paymentAmount[0].amount=$amount"\
-		-F "method=$method"\
-		-F "$special"\
+		-d "paymentAmount[0].amount=$amount"\
+		-d "method=${method// /%20}"\
+		-d "$special"\
 		| sed -n '
 	# begin with blank line
 	1{
