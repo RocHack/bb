@@ -111,6 +111,22 @@ Get your history of tuition payments (in CSV format):
 
     $ bb history
 
+Making tuition payments
+-----------------------
+
+    bb pay [-m <method>] [<amount>]
+
+Example:
+
+    $ bb pay -m coop
+    Found Genesee Coop FCU (CHECKING XXXX)
+    Payment amount: 100 <---- user input
+
+    ...
+
+    Confirm this payment? [y/n] n
+    Payment cancelled
+
 Verbose mode
 ----------
 
