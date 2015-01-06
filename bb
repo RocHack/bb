@@ -757,7 +757,7 @@ bb_pay() {
 	rm $temp
 
 	pick_item 'Choose a payment profile' "$methods" "$method" || exit
-	method=${ITEM%(*}
+	method=${ITEM% (*}
 
 	# prompt for payment amount if not given as argument
 	while [[ -z "$amount" ]]
@@ -776,6 +776,20 @@ bb_pay() {
 		s/.*//
 		p
 	}
+
+	# error?
+	/template_include_Content_error/{
+		:a
+		N
+		/ <\/div>/!ba
+		s/ *<[^>]*>//g
+		s///g
+		s/\n//g
+		s/&nbsp;/ /g
+		p
+		q
+	}
+
 	# get labels and values
 	/<td class="summaryLabel"/blabel
 	/<td class="ioLabel"/blabel
