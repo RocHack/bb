@@ -193,6 +193,7 @@ bb_help() {
 	echo '    balance    Get your declining/Uros balance'
 	echo '    bill       Get your current tuition bill'
 	echo '    payments   Get your history of tuition payments'
+	echo '    pay        Make tuition payment'
 	echo 'Global options:'
 	echo '    -v         Increase verbosity'
 }
@@ -710,7 +711,8 @@ parse_quikpay_error() {
 	sed -n '
 	/<h1 class="pageTitle">/{
 		n
-		s///
+		s/
+//
 		s/^[ 	]*//p
 	}
 	/etcErrorMessage/{
@@ -718,7 +720,8 @@ parse_quikpay_error() {
 		N
 		/<\/p>/!ba
 		# extract error message
-		y/\n	/   /
+		y/\n
+	/   /
 		s/.*<p[^>]*> *//
 		s/ *<\/p>.*//p
 		q
@@ -783,7 +786,8 @@ bb_pay() {
 		N
 		/ <\/div>/!ba
 		s/ *<[^>]*>//g
-		s///g
+		s/
+//g
 		s/\n//g
 		s/&nbsp;/ /g
 		p
@@ -801,8 +805,10 @@ bb_pay() {
 		/<\/td>/!blabel
 		s/<[^>]*>//g
 		y/\n/ /
-		s/^[ ]*//
-		s/[ ]*$//
+		s/^[
+ ]*//
+		s/[
+ ]*$//
 		h
 		bz
 	:value
@@ -812,7 +818,8 @@ bb_pay() {
 		# strip tags
 		#/0311/l
 		s/<[^>]*>//g
-		s///g
+		s/
+//g
 		y/\n/ /
 		s/  */ /g
 		s/  *$//
@@ -830,9 +837,11 @@ bb_pay() {
 		N
 		s/<[^>]*>/ /g
 		s/  */ /g
-		s/^ //
+		s/^ 
+//
 		s/\(\n\) /\1/
-		s/[ ]*$//
+		s/[
+ ]*$//
 		G
 		p
 	}'
