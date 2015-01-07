@@ -653,7 +653,7 @@ bb_bill() {
 			/ElementLabel/{
 				n
 				# replace annoying whitespace characters
-				y/\n	/   /
+				y/\n'$'\r\t''/   /
 				# trim
 				s/^ *//; s/ *$/:/
 				# save for later
@@ -662,7 +662,7 @@ bb_bill() {
 			/ElementValue/{
 				n;N;N
 				# clean up
-				y/\n	/   /
+				y/\n'$'\r\t''/   /
 				s/ *<.*$//
 				s/^ *//; s/ *$//
 				# prepend label
