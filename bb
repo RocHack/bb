@@ -691,6 +691,7 @@ usage_pay() {
 parse_payment_profiles() {
 	sed -n -e '/<select name="method"/{
 	# get stored profiles
+	/Or use a stored profile/!d
 	s/.*<option[^<]*>Or use a stored profile[^<]*<\/option>//
 	# begin repeat
 	:a
@@ -753,10 +754,18 @@ bb_pay() {
 
 	temp=`mktemp /tmp/bbout.XXXXXX`
 	# get payment profiles and special form thing
-	quikpay_request $quikpay_payment_path | tee payments1.html > "$temp"
+	quikpay_request $quikpay_payment_path > "$temp"
 	methods=$(parse_payment_profiles < "$temp")
 	special=$(sed -n -e '/qp_epay_AmountMethodForm/ s/.*type="hidden" name="\([^"]*\)" value="\([^"]*\)".*/\1=\2/p' < "$temp")
 	rm $temp
+
+	if [[ -z "$methods" ]]; then
+		cat >&2 <<ERR
+You don't have any stored payment profiles.
+Use the QuikPAY site to make your payment, and choose "Save Profile" to use the payment method with bb for subsequent payments.
+ERR
+		exit 1
+	fi
 
 	pick_item 'Choose a payment profile' "$methods" "$method" || exit
 	method=${ITEM% (*}
