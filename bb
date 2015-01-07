@@ -712,8 +712,7 @@ parse_quikpay_error() {
 	sed -n '
 	/<h1 class="pageTitle">/{
 		n
-		s/
-//
+		s/'$'\r''//
 		s/^[ 	]*//p
 	}
 	/etcErrorMessage/{
@@ -721,8 +720,7 @@ parse_quikpay_error() {
 		N
 		/<\/p>/!ba
 		# extract error message
-		y/\n
-	/   /
+		y/\n'$'\r\t''/   /
 		s/.*<p[^>]*> *//
 		s/ *<\/p>.*//p
 		q
@@ -787,8 +785,7 @@ bb_pay() {
 		N
 		/ <\/div>/!ba
 		s/ *<[^>]*>//g
-		s/
-//g
+		s/'$'\r''//g
 		s/\n//g
 		s/&nbsp;/ /g
 		p
@@ -806,10 +803,8 @@ bb_pay() {
 		/<\/td>/!blabel
 		s/<[^>]*>//g
 		y/\n/ /
-		s/^[
- ]*//
-		s/[
- ]*$//
+		s/^['$'\r'' ]*//
+		s/['$'\r'' ]*$//
 		h
 		bz
 	:value
@@ -819,8 +814,7 @@ bb_pay() {
 		# strip tags
 		#/0311/l
 		s/<[^>]*>//g
-		s/
-//g
+		s/'$'\r''//g
 		y/\n/ /
 		s/  */ /g
 		s/  *$//
@@ -838,11 +832,9 @@ bb_pay() {
 		N
 		s/<[^>]*>/ /g
 		s/  */ /g
-		s/^ 
-//
+		s/^ '$'\r''/
 		s/\(\n\) /\1/
-		s/[
- ]*$//
+		s/['$'\r'' ]*$//
 		G
 		p
 	}'
