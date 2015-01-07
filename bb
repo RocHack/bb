@@ -406,27 +406,33 @@ get_assignments2() {
 
 	# If materials wanted, return them
 	if [[ $2 == '-m' ]]; then
-        [[ $verbose_mode ]] && echo "$course_materials"
+		[[ $verbose_mode ]] && echo "$course_materials" > rawMaterialsList.html
 		echo "$course_materials" | \
 		sed -n -e '
-			# check for the color only documents seem to have
-			/style="color:#000000;"/{
-				# eliminate the cruft around the course name
-				s_.*<span[^>]*>\(.*\)</span>.*_\1_p
-				:loop
-				# loop until document details are found
-				/.*<div[^>]*class="details".*/!{
-					n
-					b loop
-				}
-				# get the link out of the doc details
-				/.*<div[^>]*class="details".*/{
-					n
-					N
-					N
-					s_.*<a[^>]*href="\([^"]*\)"[^>]*>.*_\1_p
-				}
-			}'
+		# check for the color only documents seem to have
+		/style="color:#[0-9a-fA-F]\{6\};"/{
+			# check for an inline link, move on
+			/a href/{
+			s_.*<a href="\([^"]*\)".*<span[^>]*>\(.*\)</span>.*_\2\
+\1_p
+				b go
+			}
+			# find, print document name
+			s_.*<span[^>]*>\(.*\)</span>.*_\1_p
+			:mlloop
+			# loop until document details are found (multiline)
+			/.*<div[^>]*class="details".*/!{
+				n
+				b mlloop
+			}
+			# get the link out of the doc details
+			/.*<div[^>]*class="details".*/{
+				n
+				s_.*<a[^>]*href="\([^"]*\)"[^>]*>.*_\1_p
+			}
+			# label if inline link found
+			:go
+		}'
 		return 1
 	fi
 
@@ -1200,9 +1206,10 @@ get_materials() {
 	course_id=${COURSE%% *}
 
 	# Get all the materials for the given course
-	all_materials=`get_assignments $course_id -m | sed -n \
+	all_materials=`get_assignments $course_id -m | sed -n\
 		-e '/span/!{ s/\(.*\)/	\1/; p; }'\
 		-e '/span/{ s/\(.*\)<\/span>/\1 [dir]/; p; }'`
+	[[ $verbose_mode ]] && echo "$all_materials" > allRoutes.txt
 
 	# With materials, determine target document (remove routes)
 	materials=`echo "$all_materials" | sed -e '/^	\//{ d; }'`
@@ -1210,8 +1217,14 @@ get_materials() {
 	# Routes are anything with a first dash, exclude
 	materials=`grep -i "$query" <<< "$materials"`
 	num_matches=`echo "$materials" | wc -l | sed -e 's/^[ \t]*//'`
-	[[ $num_matches -gt 1 ]] && echo "Found $num_matches materials."
-	[[ $verbose_mode ]] && echo "$all_materials"
+
+	# Check if any materials found
+	if [[ $num_matches -gt 1 ]]; then
+		echo "Found $num_matches documents."
+	elif [[ $materials != "*[dir]*" ]]; then
+		echo "No materials found for current course."
+		return 1
+	fi
 
 	# Split strings at newline for select menu
 	OIFS=$IFS
@@ -1226,24 +1239,17 @@ get_materials() {
 		select material in $materials; do
 			break
 		done
-
 	# If just one matching item, autoselect
-	elif [[ $num_matches -eq 1 ]] && ! [[ $materials =~ ^Course\ Materials\ \[dir\]$ ]]; then
+	else
 		material="$materials"
-
-	else # If no items matched, done
-		IFS=$OIFS
-		PS3=$OPS3
-		echo "No materials found for current course."
-		return 1
 	fi
 
 	# Restore environment.
 	IFS=$OIFS
 	PS3=$OPS3
 
-	# Figure out the location of doc, download
-	url=`echo "$all_materials" | sed -n -e "/$material/{ n; s/^[	]// p; }"`
+	# Figure out the location of doc
+	url=`echo "$all_materials" | grep -A 1 "$material" | sed -ne '2 s/^	//p'`
 	material=`echo "$material" | sed -e 's/^[ \t]*//'`
 
 	# TODO: Option to just dump everything, or all contents in a dir?
@@ -1255,7 +1261,7 @@ get_materials() {
 	# Get the actual path of the document (for naming)
 	# t for temp link, r for redirected link
 	r_url=`bb_request -i "$s_url" 2>&1 | sed -ne "s/.*\(content-rid.*\)/\1/p"`
-	t_url=`echo "$p_url" | sed -ne "s/^\(.*\)content-rid.*/\1/p"`
+	t_url=`echo "$s_url" | sed -ne "s/^\(.*\)content-rid.*/\1/p"`
 
 	# Get what the file type is from its name (dirty)
 	full_url="$t_url$r_url" # resolved, full path
@@ -1263,8 +1269,8 @@ get_materials() {
 	filename=$(bb_request -OJw '%{filename_effective}' "$full_url")
 
 	# Write the desired file to local file system
-	filename=`echo "$filename" | sed 's/$//'`
-	bb_request -L "$s_url" > $filename
+	filename=`echo "$filename" | sed -e 's/%20/ /g' -e 's/$//'`
+	bb_request -L -# "$s_url" > "$filename"
 	echo Downloaded $filename
 }
 
