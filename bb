@@ -931,11 +931,26 @@ bb_bill() {
 
 	else
 		# Extract the statement text
-		quikpay_request $quikpay_current_statement_path -L |\
-			sed -n -e '/ElementLabel/{n; s/^[\r\n[:blank:]]*//; s/[\r\n[:blank:]]*$/:/; p; }'\
-			-e '/ElementValue/{n;N;N; s/[\r\n[:blank:]]*<.*$//'\
-			-e 's/^[\r\n[:blank:]]*\(.*\)[\r\n[:blank:]]*$/\1/; s/[\r\n[:blank:]]*$//; p; }' |\
-			sed '/:/N;s/\n/ /'
+		quikpay_request $quikpay_current_statement_path -L | sed -n '
+			/ElementLabel/{
+				n
+				# replace annoying whitespace characters
+				y/\n'$'\r\t''/   /
+				# trim
+				s/^ *//; s/ *$/:/
+				# save for later
+				h
+			}
+			/ElementValue/{
+				n;N;N
+				# clean up
+				y/\n'$'\r\t''/   /
+				s/ *<.*$//
+				s/^ *//; s/ *$//
+				# prepend label
+				x;G
+				s/\n/ /p
+			}'
 	fi
 
 	if [[ $pdf_output_file ]]; then
