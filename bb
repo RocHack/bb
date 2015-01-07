@@ -698,7 +698,8 @@ parse_payment_profiles() {
 	/<option/!q
 	h
 	# extract and print the first item
-	s/<option[^>]* value="\([^"]*\)"[^>]*>[^(]*(\([^<]*\))[^<]*<\/option>.*/\1 (\2)/p
+	s/<option[^>]* value="\([^"]*\)"[^>]*>[^(]*(\([^<]*\))[^<]*<\/option>.*/\1 (\2)/
+	p
 	g
 	# remove the first item
 	s/<option[^>]*>[^<]*<\/option>//
