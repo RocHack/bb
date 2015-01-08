@@ -447,8 +447,9 @@ get_assignments() {
 	local course_path="$course_main_path$course_id"
 
 	# Go to the Course Materials page
-	local course_materials_path=`bb_request $course_path -L | \
-		sed -n '/Course Material/ s/.*<a href="\([^"]*\)".*/\1/p'`
+	local course_materials_path=`bb_request $course_path -L | sed -n \
+		'/<span title="Course Materials">/{
+			s/.*<a href="\([^"]*\)".*/\1/p; q; }'`
 
 	# $2 is a flag for returning course materials
 	get_assignments2 $course_materials_path $2
