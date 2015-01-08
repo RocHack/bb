@@ -23,7 +23,10 @@ quikpay_root='https://quikpayasp.com'
 quikpay_auth_path='/rochester/tuition/payer.do'
 quikpay_history_path='/rochester/qp/history/index.do'
 quikpay_current_statement_path='/rochester/qp/ebill/currentStatementDispatcher.do'
-
+quikpay_payment_path='/rochester/qp/epay/index.do'
+quikpay_payment_confirm_path='/rochester/qp/epay/submitAmountMethod.do'
+quikpay_payment_submit_path='/rochester/qp/epay/submitCheckECheckConfirmation.do'
+quikpay_payment_process_path='/rochester/qp/epay/processPayment.do'
 cookie_jar=~/.bbsession
 
 # login info will be filled from ~/.netrc or by prompting the user
@@ -190,6 +193,7 @@ bb_help() {
 	echo '    balance    Get your declining/Uros balance'
 	echo '    bill       Get your current tuition bill'
 	echo '    payments   Get your history of tuition payments'
+	echo '    pay        Make tuition payment'
 	echo 'Global options:'
 	echo '    -v         Increase verbosity'
 }
@@ -197,6 +201,65 @@ bb_help() {
 invalid_command() {
 	echo "bb: '$1' is not a bb command. See 'bb help'" >&2
 	exit 127
+}
+
+# Pick an item out of a list.
+# Usage: pick_item "$prompt" "$items" "$item_query"
+# Finds a line in $items matching $item_query, or the user's input.
+# Writes result to variable ITEM
+#
+pick_item() {
+	local items=
+	local prompt=${1:='Choose an item'}
+	local all_items="$2"
+	local search="$3"
+	local num_matches=0
+
+	# If the user specified no item, let them pick one now.
+	if [[ -z $search ]]; then
+		# List all items
+		items="$all_items"
+	else
+		# Find items matching the search string
+		items=$(grep -i "$search" <<< "$all_items")
+
+		if [[ -z $items ]]; then
+			# If 0 items match, let the user pick from all the items.
+			echo "Found no items matching '$search'"
+			items="$all_items"
+		else
+			# If 1 item matches, use that one.
+			num_matches=$(sed -n '$=' <<< "$items")
+			if [[ $num_matches -eq 1 ]]; then
+				echo Found $items
+				ITEM="$items"
+				return
+			else
+				# If >1 items match, let the user pick from the matches.
+				echo Found $num_matches items.
+			fi
+		fi
+	fi
+
+	# Split strings at newline for select menu
+	OIFS=$IFS
+	IFS=$'\n'
+
+	# Set the prompt string
+	OPS3=$PS3
+	PS3="$prompt: "
+
+	select item in $items; do
+		ITEM="$item"
+		[[ -n $item ]] && break
+	done
+
+	# Restore environment
+	IFS=$OIFS
+	PS3=$OPS3
+
+	# Return status
+	[[ -n "$item" ]]
 }
 
 # command: submit
@@ -620,6 +683,227 @@ bb_payments() {
 	}'
 }
 
+usage_pay() {
+	echo "Usage: bb pay [-v] [-m <payment_method>] [<amount>]" >&2
+	exit 1
+}
+
+parse_payment_profiles() {
+	sed -n -e '/<select name="method"/{
+	# get stored profiles
+	/Or use a stored profile/!d
+	s/.*<option[^<]*>Or use a stored profile[^<]*<\/option>//
+	# begin repeat
+	:a
+	# done
+	/<option/!q
+	h
+	# extract and print the first item
+	s/<option[^>]* value="\([^"]*\)"[^>]*>[^(]*(\([^<]*\))[^<]*<\/option>.*/\1 (\2)/
+	p
+	g
+	# remove the first item
+	s/<option[^>]*>[^<]*<\/option>//
+	# end repeat
+	ba
+	}'
+}
+
+parse_quikpay_error() {
+	sed -n '
+	/<h1 class="pageTitle">/{
+		n
+		s/'$'\r''//
+		s/^[ 	]*//p
+	}
+	/etcErrorMessage/{
+		:a
+		N
+		/<\/p>/!ba
+		# extract error message
+		y/\n'$'\r\t''/   /
+		s/.*<p[^>]*> *//
+		s/ *<\/p>.*//p
+		q
+	}'
+}
+
+# command: pay
+# Make a tuition payment
+bb_pay() {
+	local opt=
+	local amount=
+	local method=
+	local methods=
+	local special=
+	local temp=
+	local confirm=
+	local batch_id=
+	local confirm_num=
+	local result_msg=
+
+	for arg; do
+		if [[ $arg == '-v' ]]; then true
+		elif [[ $arg == '-h' ]]; then usage_pay
+		elif [[ $arg == '-m' ]]; then opt=method
+		elif [[ $opt == method ]]; then method="$arg"; opt=
+		elif [[ -z "$amount" ]]; then amount="$arg"
+		else echo Unknown argument "$arg" >&2; exit $EX_USAGE
+		fi
+	done
+
+	temp=`mktemp /tmp/bbout.XXXXXX`
+	# get payment profiles and special form thing
+	quikpay_request $quikpay_payment_path > "$temp"
+	methods=$(parse_payment_profiles < "$temp")
+	special=$(sed -n -e '/qp_epay_AmountMethodForm/ s/.*type="hidden" name="\([^"]*\)" value="\([^"]*\)".*/\1=\2/p' < "$temp")
+	rm $temp
+
+	if [[ -z "$methods" ]]; then
+		cat >&2 <<ERR
+You don't have any stored payment profiles.
+Use the QuikPAY site to make your payment, and choose "Save Profile" to use the payment method with bb for subsequent payments.
+ERR
+		exit 1
+	fi
+
+	pick_item 'Choose a payment profile' "$methods" "$method" || exit
+	method=${ITEM% (*}
+
+	# prompt for payment amount if not given as argument
+	while [[ -z "$amount" ]]
+	do
+		read -p 'Payment amount: ' amount || exit
+	done
+
+	# prepare for confirmation
+	quikpay_request $quikpay_payment_confirm_path -L \
+		-d "paymentAmount[0].amount=$amount"\
+		-d "method=${method// /%20}"\
+		-d "$special"\
+		| sed -n '
+	# begin with blank line
+	1{
+		s/.*//
+		p
+	}
+
+	# error?
+	/template_include_Content_error/{
+		:a
+		N
+		/ <\/div>/!ba
+		s/ *<[^>]*>//g
+		s/'$'\r''//g
+		s/\n//g
+		s/&nbsp;/ /g
+		p
+		q
+	}
+
+	# get labels and values
+	/<td class="summaryLabel"/blabel
+	/<td class="ioLabel"/blabel
+	/<td class="summaryValue"/bvalue
+	/<td class="ioValue"/bvalue
+	bz
+	:label
+		N
+		/<\/td>/!blabel
+		s/<[^>]*>//g
+		y/\n/ /
+		s/^['$'\r'' ]*//
+		s/['$'\r'' ]*$//
+		h
+		bz
+	:value
+		N
+		/<\/td>/!bvalue
+		# add space
+		# strip tags
+		#/0311/l
+		s/<[^>]*>//g
+		s/'$'\r''//g
+		y/\n/ /
+		s/  */ /g
+		s/  *$//
+		s/^  *//
+		# print in form "label: value"
+		x
+		G
+		s/\n\n*/ /g
+		p
+		s/.*//
+		h
+	:z
+	# print disclaimer
+	/epay_ECheckConfirmation_eCheckDisclaimer/{
+		N
+		s/<[^>]*>/ /g
+		s/  */ /g
+		s/^ '$'\r''/
+		s/\(\n\) /\1/
+		s/['$'\r'' ]*$//
+		G
+		p
+	}'
+
+	until [[ $confirm ]]; do
+		read -p 'Confirm this payment? [y/n] ' confirm
+		case "$confirm" in
+			n|N) echo 'Payment cancelled'; return 1;;
+			y|Y) break;;
+			*) echo -n; confirm=
+		esac
+	done
+
+	quikpay_request $quikpay_payment_submit_path -LF "$special" > "$temp"
+
+	batch_id=$(sed -ne 's/.* name="batchId" value="\([^"]*\)">.*/\1/p' "$temp")
+	if [[ -z "$batch_id" ]]; then
+		echo "Unable to find payment ID"
+		parse_quikpay_error <"$temp"
+		rm "$temp"
+		return 1
+	fi
+
+	echo Processing payment ID $batch_id...
+	quikpay_request $quikpay_payment_process_path -L \
+		-F "$special"\
+		-F "batchId=$batch_id" \
+		-F "dummy=" > "$temp"
+	confirm_num=$(sed <"$temp" -n '
+	/epay_include_PaymentReceiptElement_confirmNumber/{
+		:a
+		N
+		/<\/tr>/!ba
+		# extract confirmation number
+		s/.*<span class=attentionText>\([^<]*\)<\/span>.*/\1/p
+		q
+	}')
+	result_msg=$(sed <"$temp" -n '
+	/epay_include_PaymentReceiptElement_resultMessage/{
+		:a
+		N
+		/<\/tr>/!ba
+		s/[[:blank:]]*<[^>]*>[[:blank:]]*//g
+		p
+		q
+	}')
+
+	if [[ -z "$confirm_num" ]]; then
+		echo "Payment failed."
+		parse_quikpay_error <"$temp"
+	else
+		echo $result_msg
+		echo "Confirmation number: $confirm_num"
+	fi
+
+	rm $temp
+	[[ -n $confirm_num ]]
+}
+
+
 usage_bill() {
 	echo Usage: bb bill [-v] [--pdf statement.pdf] >&2
 	exit 1
@@ -884,6 +1168,7 @@ case "$cmd" in
 	balance) bb_balance $@;;
 	bill) bb_bill $@;;
 	payments) bb_payments $@;;
+	pay) bb_pay $@;;
 	grades) bb_grades "$@";;
 	*) invalid_command $cmd;;
 esac
