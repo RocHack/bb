@@ -409,30 +409,72 @@ get_assignments2() {
 		[[ $verbose_mode ]] && echo "$course_materials" > rawMaterialsList.html
 		echo "$course_materials" | \
 		sed -n -e '
-		# check for the color only documents seem to have
-		/style="color:#[0-9a-fA-F]\{6\};"/{
-			# check for an inline link, move on
-			/a href/{
-			s_.*<a href="\([^"]*\)".*<span[^>]*>\(.*\)</span>.*_\2\
+				# check for the color only documents seem to have
+				/style="color:#[0-9a-fA-F]\{6\};"/{
+
+					# check for an inline link, move on
+					/a href/{
+					s_.*<a href="\([^"]*\)".*<span[^>]*>\(.*\)</span>.*_\2\
 \1_p
-				b go
-			}
-			# find, print document name
-			s_.*<span[^>]*>\(.*\)</span>.*_\1_p
-			:mlloop
-			# loop until document details are found (multiline)
-			/.*<div[^>]*class="details".*/!{
-				n
-				b mlloop
-			}
-			# get the link out of the doc details
-			/.*<div[^>]*class="details".*/{
-				n
-				s_.*<a[^>]*href="\([^"]*\)"[^>]*>.*_\1_p
-			}
-			# label if inline link found
-			:go
-		}'
+						b one
+					}
+
+					# find, print document name
+					s_.*<span[^>]*>\(.*\)</span>.*_\1_p
+
+					# loop until document details are found (multiline)
+					:loop
+					/.*<div[^>]*class="details".*/!{
+						n
+						b loop
+					}
+
+					# get the link out of the doc details
+					/.*<div[^>]*class="details".*/{
+						n
+						s_.*<a[^>]*href="\([^"]*\)"[^>]*>.*_\1_p
+						b done
+					}
+
+					# label if inline link found, or attachments
+					:one
+					/.*<div[^>]*class="details".*/!{
+						n
+						b one
+					}
+
+					# get the attachment(s) out of the doc details
+					/.*<div[^>]*class="details".*/{
+						n
+
+					# Check if there are attached files
+					/Attached File/{
+
+						# Check to see if there are more files
+						:attachment
+						/alt="File"/{
+						s_^\(.*\)<a href="\([^"]*\)".*>&nbsp;\([^<]*\)</a\(.*\)$_\1\
+attachment: \3\
+\2\
+\4_
+						b attachment
+						}
+
+						# Clean out left over junk lines
+						/^\(<|>\).*\n/{ d; }
+
+						# Remove final new line between assignments
+						s_\(.*\)\n.*_\1_p
+
+					}
+					}
+
+
+					# no more to parse
+					:done
+				}
+		' | sed -e '/^\(> (\)/d; /^.*<div/d'
+
 		return 1
 	fi
 
@@ -1180,7 +1222,7 @@ bb_grades() {
 }
 
 usage_materials() {
-	echo Usage: bb materials [-v] [\<course\>] [\<document\>] >&2
+	echo 'Usage: bb materials [-v] [<course>] [<assignment>]' >&2
 	exit 1
 }
 
@@ -1199,6 +1241,10 @@ get_materials() {
 		fi
 	done
 
+	# Debugging info
+	[[ $verbose_mode ]] && echo "Course: $course"
+	[[ $verbose_mode ]] && echo "Query: $query"
+
 	# Establish session
 	authenticate
 
@@ -1206,23 +1252,47 @@ get_materials() {
 	get_course $course
 	course_id=${COURSE%% *}
 
-	# Get all the materials for the given course
+	# Get all the materials for the given course, clean
+	# label folders as dir, tab in items
 	all_materials=`get_assignments $course_id -m | sed -n\
 		-e '/span/!{ s/\(.*\)/	\1/; p; }'\
 		-e '/span/{ s/\(.*\)<\/span>/\1 [dir]/; p; }'`
+
+	# Remove placeholders - items with no links
+	all_materials=`echo "$all_materials" | sed -e 'N; /&content_id=_/d'`
 	[[ $verbose_mode ]] && echo "$all_materials" > allRoutes.txt
 
-	# With materials, determine target document (remove routes)
-	materials=`echo "$all_materials" | sed -e '/^	\//{ d; }'`
-
 	# Routes are anything with a first dash, exclude
-	materials=`grep -i "$query" <<< "$materials"`
-	num_matches=`echo "$materials" | wc -l | sed -e 's/^[ \t]*//'`
+	materials=`echo "$all_materials" | sed -e '/^	\//{ d; }'`
+	temp_materials=`echo "$materials" | grep -i "$query"`
+	temp_num_matches=`echo "$temp_materials" | sed -n '$='`
+
+	# Check to see if attachments exist, add
+	if [[ $temp_num_matches -eq 1 ]]; then
+		materials=`echo "$materials" | sed -n -e "
+			/$temp_materials/{
+				:a
+				p
+				n
+				/ attachment/{
+					ba
+				}
+			}
+		"`
+	else
+		# more than one line, don't check for attachments
+		materials="$temp_materials"
+	fi
+
+	# With materials, determine target documents
+	[[ $verbose_mode ]] && echo "$materials" >> allRoutes.txt
+	url=`echo "$all_materials" | grep -A 1 "$material" | sed -ne '2 s/^	//p'`
+	num_matches=`echo "$materials" | sed -n '$='`
 
 	# Check if any materials found
 	if [[ $num_matches -gt 1 ]]; then
 		echo "Found $num_matches documents."
-	elif [[ $materials != "*[dir]*" ]]; then
+	elif [[ $materials == "*[dir]*" || $materials == "" ]]; then
 		echo "No materials found for current course."
 		return 1
 	fi
@@ -1233,7 +1303,7 @@ get_materials() {
 
 	# Set the prompt string - copied from courses way
 	OPS3=$PS3
-	PS3='Choose a material to download: '
+	PS3='Choose a file to download: '
 
 	# Prompt user to choose an item
 	if [[ $num_matches -gt 1 ]]; then
@@ -1259,20 +1329,20 @@ get_materials() {
 	echo Target material: $material
 	s_url="$bb_url$url"
 
-	# Get the actual path of the document (for naming)
-	# t for temp link, r for redirected link
+	# Get the actual path of the document (for naming) - r for redirected
 	r_url=`bb_request -i "$s_url" 2>&1 | sed -ne "s/.*\(content-rid.*\)/\1/p"`
-	t_url=`echo "$s_url" | sed -ne "s/^\(.*\)content-rid.*/\1/p"`
 
-	# Get what the file type is from its name (dirty)
-	full_url="$t_url$r_url" # resolved, full path
-	[[ $verbose_mode ]] && echo Found material @ $full_url
-	filename=$(bb_request -OJw '%{filename_effective}' "$full_url")
+	# Parse and clean the correct name of the file
+	filename=`basename "$r_url" | sed -e '\
+		s/%20/ /g
+		s/%281//g
+		s/%29//g
+		s/$//'`
 
 	# Write the desired file to local file system
-	filename=`echo "$filename" | sed -e 's/%20/ /g' -e 's/$//'`
 	bb_request -L -# "$s_url" > "$filename"
 	echo Downloaded $filename
+
 }
 
 # command: help
