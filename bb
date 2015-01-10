@@ -290,7 +290,7 @@ get_courses() {
 bb_courses() {
 	authenticate
 	local current_term=
-    local term=
+	local term=
 	get_courses | while read cid name term crn title
 	do
 		# example:
@@ -306,7 +306,7 @@ bb_courses() {
 			current_term="$term"
 		fi
 
-        printf "    %5s %-8s -  %s\n" "$crn" "$(sed 's/^[A-Z]\+/\0 /' <<< $name)" "$title"
+		printf "	%5s %-8s -  %s\n" "$crn" "$(sed 's/^[A-Z]\+/\0 /' <<< $name)" "$title"
 	done
 }
 
