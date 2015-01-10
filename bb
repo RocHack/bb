@@ -306,7 +306,7 @@ bb_courses() {
 			current_term="$term"
 		fi
 
-        printf "\t%5s %-8s\t%s\n" "$crn" "$(sed 's/^[A-Z]\+/\0 /' <<< $name)" "$title"
+        printf "    %5s %-8s -  %s\n" "$crn" "$(sed 's/^[A-Z]\+/\0 /' <<< $name)" "$title"
 	done
 }
 
