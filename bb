@@ -289,6 +289,9 @@ get_courses() {
 
 bb_courses() {
 	authenticate
+	local prev_term=
+	local term_pretty=
+	local name_pretty=
 	get_courses | while read cid name term crn title
 	do
 		# example:
@@ -297,8 +300,16 @@ bb_courses() {
 		# term=2012FALL
 		# crn=77613
 		# title='THE SCI OF DATA STRUCTURES'
+		term_pretty="$(cut -c 5 <<< $term)$(cut -c 6- <<< $term | tr \
+			'[:upper:]' '[:lower:]') $(cut -c -4 <<< $term)"
+		if [[ "$term_pretty" != "$prev_term" ]]; then
+			echo "$term_pretty"
+			prev_term="$term_pretty"
+		fi
 
-		echo $name.$term.$crn - $title
+		name_pretty=`sed 's/^[A-Z]\+/\0 /' <<< $name`
+
+		printf "\t%5s %-8s\t%s\n" "$crn" "$name_pretty" "$title"
 	done
 }
 
