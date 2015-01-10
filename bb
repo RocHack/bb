@@ -284,7 +284,7 @@ bb_ajax_module() {
 # path name term crn title
 # If the course has no link, path is empty and the line will start with a space.
 get_courses() {
-	bb_ajax_module _452_1 | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/[^"]*course_id=\([^"]*\)">\)*[^A-Z]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
+	bb_ajax_module _452_1 | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/[^"]*course_id=\([^"]*\)">\)*[^A-Z0-9]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
 }
 
 bb_courses() {
