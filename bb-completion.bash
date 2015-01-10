@@ -57,16 +57,15 @@ _bb_submit_complete() {
             _bb_use_files
             ;;
         -t|-c)
-            _bb_set_options ""
+            _bb_no_options
             ;;
         *)
-            _bb_set_options "$(_bb_arg "-f") $(_bb_arg "-t") $(_bb_arg "-c") \
-                $(_bb_arg "-h")"
+            _bb_set_options "$(_bb_arg "-f") $(_bb_arg "-t") $(_bb_arg "-c")"
     esac
 }
 
 _bb_pay_complete() {
-    _bb_set_options "$(_bb_arg "-m") $(_bb_arg "-h")"
+    _bb_set_options "$(_bb_arg "-m")"
 }
 
 _bb_payments_complete() {
