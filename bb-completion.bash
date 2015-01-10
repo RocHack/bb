@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# TODO - fix bug here where $word always contains the entire line
 # Prints "$1" if "$1" is not in the current arguments
 _bb_arg() {
     local is_seen=false
     for word in "${COMP_WORDS[@]}"; do
-        [[ "$word" != "$1" ]] || is_seen=true && break
+        if [[ "$word" = "$1" ]]; then
+            is_seen=true
+            break
+        fi
     done
     $is_seen || printf -- "$1"
 }
