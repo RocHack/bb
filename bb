@@ -284,11 +284,13 @@ bb_ajax_module() {
 # path name term crn title
 # If the course has no link, path is empty and the line will start with a space.
 get_courses() {
-	bb_ajax_module _452_1 | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/[^"]*course_id=\([^"]*\)">\)*[^A-Z]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
+	bb_ajax_module _452_1 | sed -n '/course-record" valign="_top"/{ n;N;N;N; s/^\(.*tab_tab_group_id=_2_1&url=\/[^"]*course_id=\([^"]*\)">\)*[^A-Z0-9]*\([^<]*\) - [A-Z0-9]*[^A-Z0-9]*<.*"top">\([^<]*\)\.\([^<]*\)\.\([0-9]*\)<\/td>$/\/\2 \4 \5 \6 \3/p; }'
 }
 
 bb_courses() {
 	authenticate
+	local current_term=
+	local term=
 	get_courses | while read cid name term crn title
 	do
 		# example:
@@ -297,8 +299,14 @@ bb_courses() {
 		# term=2012FALL
 		# crn=77613
 		# title='THE SCI OF DATA STRUCTURES'
+		term="$(cut -c 5 <<< $term)$(cut -c 6- <<< $term | tr \
+			'[:upper:]' '[:lower:]') $(cut -c -4 <<< $term)"
+		if [[ "$term" != "$current_term" ]]; then
+			echo "$term"
+			current_term="$term"
+		fi
 
-		echo $name.$term.$crn - $title
+		printf "	%5s %-8s -  %s\n" "$crn" "$(sed 's/^[A-Z]*/& /' <<< $name)" "$title"
 	done
 }
 
