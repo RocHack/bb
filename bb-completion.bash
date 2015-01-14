@@ -27,6 +27,10 @@ _bb_no_options() {
     COMPREPLY=()
 }
 
+_bb_announcements_complete() {
+    _bb_no_options
+}
+
 _bb_balance_complete() {
     _bb_set_options "$(_bb_arg "-u") $(_bb_arg "-d") $(_bb_arg "-h")"
 }
@@ -83,7 +87,7 @@ _bb_cmd() {
 }
 
 _bb_complete() {
-    local commands="balance bill courses grades materials submit pay payments help -h"
+    local commands="announcements balance bill courses grades materials submit pay payments help -h"
 
     if [[ $COMP_CWORD -le 1 ]]; then
         _bb_set_options "$commands"
