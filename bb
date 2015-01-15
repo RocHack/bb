@@ -13,6 +13,7 @@ main_path='/webapps/portal/execute/tabs/tabAction?tab_tab_group_id=_23_1'
 upload_assignment_path='/webapps/blackboard/execute/uploadAssignment?action=submit'
 course_grades_path='/webapps/bb-mygrades-bb_bb60/myGrades?stream_name=mygrades&course_id='
 course_main_path='/webapps/blackboard/execute/courseMain?course_id='
+announcements_path='/webapps/blackboard/execute/announcement'
 
 sequoia_token_path='/webapps/bb-ecard-sso-bb_bb60/token.jsp'
 sequoia_auth_url='https://ecard.sequoiars.com/eCardServices/AuthenticationHandler.ashx'
@@ -1354,6 +1355,21 @@ bb_materials() {
 
 }
 
+bb_announcements() {
+	authenticate
+
+	get_course
+	read cid name term crn title <<< "$COURSE"
+	echo
+
+	bb_request "$announcements_path" \
+		-F 'method=search' \
+		-F "searchSelect=$(cut -c 1- <<< "$cid")" \
+		-F 'viewChoice=3' \
+		| awk '/<ul id/,/<\/ul/ {print $0;}' \
+		| sed 's/<\/\?[a-zA-Z0-9]\+\(\s\+\w\+="[a-zA-Z0-9_#;: -]*"\)*\s*>//g;s/<!--.*-->//g;s/^\s*//'
+}
+
 # command: help
 usage_help() {
 	bb_help
@@ -1389,5 +1405,6 @@ case "$cmd" in
 	pay) bb_pay $@;;
 	grades) bb_grades "$@";;
 	materials) bb_materials "$@";;
+	announcements) bb_announcements "$@";;
 	*) invalid_command $cmd;;
 esac
