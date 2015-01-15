@@ -1358,7 +1358,9 @@ bb_materials() {
 bb_announcements() {
 	authenticate
 
-	get_course
+	query="$1"
+
+	get_course "$query"
 	read cid name term crn title <<< "$COURSE"
 	echo
 
