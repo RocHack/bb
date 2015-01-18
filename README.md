@@ -44,6 +44,21 @@ Get your grades for a course.
 
     ...
 
+Downloading assignment files
+----------------------------
+
+    bb materials [-v] [<course>] [<assignment_name>]
+
+Check what materials have been uploaded for a course. Select and download one
+of those materials. Materials can be searched by assignment name, or partial
+matches, such as `bb materials 245 lecture`, which will return a list of
+documents that have lecture in their name.
+
+    $ bb materials 245 lab 2
+    Found ECE245 2014FALL 33530 WIRELESS COMMUNICATIONS.
+    Target material: Lab 2
+    Downloaded Lab_2.pdf
+
 Submitting an assignment
 ------------------------
 
@@ -133,7 +148,7 @@ Verbose mode
 If bb has not been run recently, it will have to log in to Blackboard (and to
 the Sequoia system for the balance command). This may take a while.
 
-To get a better idea of what is happening, you can use the `-v` option to increase verbosity. This is useful for debugging bb. 
+To get a better idea of what is happening, you can use the `-v` option to increase verbosity. This is useful for debugging bb.
 
 For example:
 
