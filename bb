@@ -1274,7 +1274,7 @@ get_materials() {
 				:a
 				p
 				n
-				/ attachment/{
+				/attachment/{
 					ba
 				}
 			}
