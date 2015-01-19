@@ -1227,7 +1227,7 @@ usage_materials() {
 }
 
 # Look up or download course materials
-get_materials() {
+bb_materials() {
 	local query=
 	local course=
 
@@ -1379,6 +1379,6 @@ case "$cmd" in
 	payments) bb_payments $@;;
 	pay) bb_pay $@;;
 	grades) bb_grades "$@";;
-	materials) get_materials "$@";;
+	materials) bb_materials "$@";;
 	*) invalid_command $cmd;;
 esac
