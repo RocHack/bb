@@ -1267,6 +1267,12 @@ bb_materials() {
 	temp_materials=`echo "$materials" | grep -i "$query"`
 	temp_num_matches=`echo "$temp_materials" | sed -n '$='`
 
+	# Check to see if temp materials is null
+	if [[ -z "$temp_materials" ]]; then
+		echo "No materials found for current course."
+		return 1
+	fi
+
 	# Check to see if attachments exist, add
 	if [[ $temp_num_matches -eq 1 ]]; then
 		materials=`echo "$materials" | sed -n -e "
