@@ -59,6 +59,9 @@ insecure_file() {
 
 # get saved login info from ~/.netrc
 parse_netrc() {
+	regex='/%TOKEN%/!d;s/.*%TOKEN% \("\(\([^"\]\|\\.\)*\)"\|\(\([^ \]\|\\.\)*\)\).*/\2\4/;'
+	regex+='s/\\\([^\\]\)/\1/g;s/\\$//g;s/\\\\/\\/g'
+
 	netrc=~/.netrc
 	[[ -e $netrc ]] || return 1
 
@@ -69,8 +72,8 @@ parse_netrc() {
 	fi
 
 	cred=`sed -n "/machine $bb_server/,/machine /p" $netrc`
-	user_id=`sed -n 's/.*login \([^ ]*\).*/\1/p' <<< $cred`
-	password=`sed -n 's/.*password \([^ ]*\).*/\1/p' <<< $cred`
+	user_id=`sed "${regex//%TOKEN%/login}" <<< $cred`
+	password=`sed "${regex//%TOKEN%/password}" <<< $cred`
 }
 
 # Check to see if curl is installed for current user
