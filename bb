@@ -158,7 +158,7 @@ login() {
 	if [[ -z $password ]]
 	then
 		stty -echo
-		read -p 'Password: ' password; echo
+		read -r -p 'Password: ' password; echo
 		stty echo
 	fi
 
