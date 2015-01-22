@@ -188,20 +188,32 @@ usage_main() {
 }
 
 bb_help() {
-	echo 'Usage: bb <command> <args>'
-	echo 'Commands:'
-	echo '    help           Get this help message'
-	echo '    courses        List your courses'
-	echo '    grades         Get grades for a course'
-	echo '    submit         Submit an assignment for a course'
-	echo '    balance        Get your declining/Uros balance'
-	echo '    bill           Get your current tuition bill'
-	echo '    payments       Get your history of tuition payments'
-	echo '    pay            Make tuition payment'
-	echo '    materials      List or download course materials'
-	echo '    announcements  Get course announcements'
-	echo 'Global options:'
-	echo '    -v         Increase verbosity'
+	case "$1" in
+		submit) usage_submit;;
+		#courses) usage_courses;;
+		balance) usage_balance;;
+		bill) usage_bill;;
+		#payments) usage_payments;;
+		pay) usage_pay;;
+		grades) usage_grades;;
+		materials) usage_materials;;
+		announcements) usage_announcements;;
+		*)
+			echo 'Usage: bb <command> <args>'
+			echo 'Commands:'
+			echo '    help           Get this help message'
+			echo '    courses        List your courses'
+			echo '    announcements  Get course announcements'
+			echo '    grades         Get grades for a course'
+			echo '    materials      List or download course materials'
+			echo '    submit         Submit an assignment for a course'
+			echo '    balance        Get your declining/Uros balance'
+			echo '    bill           Get your current tuition bill'
+			echo '    payments       Get your history of tuition payments'
+			echo '    pay            Make tuition payment'
+			echo 'Global options:'
+			echo '    -v             Increase verbosity';;
+	esac
 }
 
 invalid_command() {
@@ -663,6 +675,11 @@ authenticate_sequoia() {
 	fi
 }
 
+usage_balance() {
+	echo Usage: bb balance [-d] [-u] [-v] >&2
+	exit 1
+}
+
 # command: balance
 # Get account balances
 bb_balance() {
@@ -682,8 +699,8 @@ bb_balance() {
 	[[ $print_declining == $print_uros ]] && print_both=1
 
 	if [[ $badarg ]]; then
-		echo Usage: bb balance [-d] [-u] [-v] >&2
-		return $EX_USAGE
+		usage_balance
+		#return $EX_USAGE
 	fi
 
 	# Try to re-use the session
@@ -1362,6 +1379,11 @@ trim() {
 		s/\s*$//g;
 		s/\s\s*/ /g;
 	'
+}
+
+usage_announcements() {
+	echo 'Usage: bb announcements [<course>]' 2>&1
+	exit 1
 }
 
 bb_announcements() {
