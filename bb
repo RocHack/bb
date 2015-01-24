@@ -1356,6 +1356,14 @@ bb_materials() {
 
 }
 
+trim() {
+	sed '
+		s/^\s*//g;
+		s/\s*$//g;
+		s/\s\s*/ /g;
+	'
+}
+
 bb_announcements() {
 	authenticate
 
@@ -1370,7 +1378,9 @@ bb_announcements() {
 		-F "searchSelect=$(cut -c 1- <<< "$cid")" \
 		-F 'viewChoice=3' \
 		| awk '/<ul id/,/<\/ul/ {print $0;}' \
-		| sed 's/<!--.*-->//g;s/<\(\(br \?\/\?\)\|p\)>/\n/g;s/<\/\?[a-zA-Z0-9]\+\(\s\+\w\+="[a-zA-Z0-9_#;: -]*"\)*\s*>/ /g;s/^\s*//' \
+		| trim \
+		| sed 's/<!--.*-->//g;s/<\(\(br \?\/\?\)\|p\)>/\n/g;s/<\/\?[a-zA-Z0-9]\+\(\s\+\w\+="[a-zA-Z0-9_#;: -]*"\)*\s*>/ /g;' \
+		| trim \
 		| uniq
 }
 
