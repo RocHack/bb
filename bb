@@ -1370,7 +1370,7 @@ bb_announcements() {
 		-F "searchSelect=$(cut -c 1- <<< "$cid")" \
 		-F 'viewChoice=3' \
 		| awk '/<ul id/,/<\/ul/ {print $0;}' \
-		| sed 's/<\(\(br \?\/\?\)\|p\)>/\n/g;s/<\/\?[a-zA-Z0-9]\+\(\s\+\w\+="[a-zA-Z0-9_#;: -]*"\)*\s*>/ /g;s/<!--.*-->//g;s/^\s*//' \
+		| sed 's/<!--.*-->//g;s/<\(\(br \?\/\?\)\|p\)>/\n/g;s/<\/\?[a-zA-Z0-9]\+\(\s\+\w\+="[a-zA-Z0-9_#;: -]*"\)*\s*>/ /g;s/^\s*//' \
 		| uniq
 }
 
