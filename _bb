@@ -1,0 +1,83 @@
+#compdef bb
+
+# command -bar Update !cp _bb ~/.zsh/_bb
+
+_bb_announcements_complete() {
+    return
+}
+
+_bb_balance_complete()
+{
+    _arguments \
+        '(- :)-h[display the help]' \
+        '-v[be verbose]' \
+        '-u[show URos/FLEX]' \
+        '-d[show declining]'
+}
+
+_bb_bill_complete() {
+    _arguments \
+        '(- :)-h[display the help]' \
+        '--pdf[Use a PDF file]: :_files'
+}
+
+_bb_courses_complete() {
+    return
+}
+
+_bb_grades_complete() {
+    _arguments \
+        '(- :)-h[display the help]'
+}
+
+_bb_materials_complete() {
+    _arguments \
+        '(- :)-h[display the help]' \
+        '-v[be verbose]'
+}
+
+_bb_submit_complete() {
+    _arguments \
+        '(- :)-h[display the help]' \
+        '-v[be verbose]' \
+        '-f[submit a file]: :_files' \
+        '-t[specify submission text]: :( )' \
+        '-c[specify comments]: :( )'
+}
+
+_bb_pay_complete() {
+    _arguments \
+        '(- :)-h[display the help]' \
+        '-v[be verbose]' \
+        '-m[specify payment method]'
+}
+
+_bb_payments_complete() {
+    return
+}
+
+_bb_help_complete() {
+    return
+}
+
+_bb()
+{
+    local context state state_descr line cmd
+    typeset -A opt_args
+
+    _arguments -R \
+        '(- :)-h[display the help]' \
+        ': :(announcements balance bill courses grades materials submit pay payments help)' \
+        '*:: :->command' \
+        && return
+
+    [[ $state = command ]] || return 1
+
+    cmd=${words[1]}
+
+    which _bb_${cmd}_complete &>/dev/null || return 1
+
+    _bb_${cmd}_complete
+}
+
+_bb
