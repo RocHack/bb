@@ -79,7 +79,9 @@ _bb_payments_complete() {
 }
 
 _bb_help_complete() {
-    _bb_no_options
+    _bb_set_options "$(_bb_arg "balance") $(_bb_arg "materials") $(_bb_arg \
+        "submit") $(_bb_arg "bill") $(_bb_arg "pay") $(_bb_arg "grades") \
+        $(_bb_arg "announcements")"
 }
 
 _bb_cmd() {

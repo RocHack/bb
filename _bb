@@ -57,7 +57,8 @@ _bb_payments_complete() {
 }
 
 _bb_help_complete() {
-    return
+    _arguments \
+        ': :(submit balance bill pay grades material announcements)'
 }
 
 _bb()
