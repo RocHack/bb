@@ -239,7 +239,7 @@ pick_item() {
 		items="$all_items"
 	else
 		# Find items matching the search string
-		items=$(grep -i "$search" <<< "$all_items")
+		items=$(grep -ie "$search" <<< "$all_items")
 
 		if [[ -z $items ]]; then
 			# If 0 items match, let the user pick from all the items.
@@ -365,7 +365,7 @@ get_course() {
 		courses="$all_courses"
 	else
 		# Find courses matching the search string
-		courses=`grep -i "$search" <<< "$all_courses"`
+		courses=`grep -ie "$search" <<< "$all_courses"`
 
 		if [[ -z $courses ]]; then
 			# If 0 courses match, let the user pick from all their courses.
@@ -397,7 +397,7 @@ get_course() {
 		select course in `sed 's/^[^ ]* //' <<<"$courses"`; do
 			if [[ -n $course ]]; then
 				# Put back the course path
-				course=`grep -F "$course" <<<"$courses"`
+				course=`grep -Fe "$course" <<<"$courses"`
 				break
 			fi
 		done
@@ -529,7 +529,7 @@ get_assignment() {
 		assignments="$all_assignments"
 	else
 		# Find assignments matching the search string
-		assignments=`grep -i "$search" <<< "$all_assignments"`
+		assignments=`grep -ie "$search" <<< "$all_assignments"`
 
 		if [[ -z $assignments ]]; then
 			echo "Found no assignments matching '$2'"
@@ -562,7 +562,7 @@ get_assignment() {
 		select assignment in `sed 's/^[^ ]* //' <<<"$assignments"`; do
 			if [[ -n $assignment ]]; then
 				# Put back the assignment path
-				assignment=`grep -F "$assignment" <<<"$assignments"`
+				assignment=`grep -Fe "$assignment" <<<"$assignments"`
 				break
 			fi
 		done
@@ -1286,7 +1286,7 @@ bb_materials() {
 
 	# Routes are anything with a first dash, exclude
 	materials=`echo "$all_materials" | sed -e '/^	\//{ d; }'`
-	temp_materials=`echo "$materials" | grep -i "$query"`
+	temp_materials=`echo "$materials" | grep -ie "$query"`
 	temp_num_matches=`echo "$temp_materials" | sed -n '$='`
 
 	# Check to see if temp materials is null
@@ -1314,7 +1314,7 @@ bb_materials() {
 
 	# With materials, determine target documents
 	[[ $verbose_mode ]] && echo "$materials" >> allRoutes.txt
-	url=`echo "$all_materials" | grep -A 1 "$material" | sed -ne '2 s/^	//p'`
+	url=`echo "$all_materials" | grep -A 1 -e "$material" | sed -ne '2 s/^	//p'`
 	num_matches=`echo "$materials" | sed -n '$='`
 
 	# Check if any materials found
@@ -1348,7 +1348,7 @@ bb_materials() {
 	PS3=$OPS3
 
 	# Figure out the location of doc
-	url=`echo "$all_materials" | grep -A 1 "$material" | sed -ne '2 s/^	//p'`
+	url=`echo "$all_materials" | grep -A 1 -e "$material" | sed -ne '2 s/^	//p'`
 	material=`echo "$material" | sed -e 's/^[ \t]*//'`
 
 	# TODO: Option to just dump everything, or all contents in a dir?
